@@ -1,0 +1,41 @@
+Checks: >
+  clang-analyzer-*
+  ,bugprone-*
+  ,modernize-*
+  ,performance-*
+  ,readability-*
+  ,cppcoreguidelines-*
+  ,misc-*
+  ,portability-*
+  ,google-*
+  ,llvm-header-guard
+  ,-google-build-using-namespace
+  ,-google-global-names-in-headers
+  ,-google-readability-braces-around-statements
+  ,-cppcoreguidelines-avoid-magic-numbers
+  ,-cppcoreguidelines-pro-type-union-access
+  ,-cppcoreguidelines-pro-bounds-pointer-arithmetic
+  ,-cppcoreguidelines-pro-bounds-array-to-pointer-decay
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: file
+CheckOptions:
+  # Readability
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  # Magic numbers warning can be noisy, so it's disabled above
+  # Enable modernize options for C++20
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+  - key: modernize-use-auto.MinTypeNameLength
+    value: '5'
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+  # Avoid using namespace in headers
+  - key: google-build-using-namespace.IgnoreMainSourceFile
+    value: 'true'
