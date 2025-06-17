@@ -28,7 +28,7 @@ struct process_window {
 
     //! Window handle belonging to the target. This is the main field that matters, because,
     //! This is how we maximize the window
-    HWND hwnd;
+    HWND window_handle;
 
     //! Title of the target window. Mainly used for display purposes
     std::wstring title;
@@ -43,12 +43,14 @@ constexpr std::wstring_view FSB_REG_KEY = L"Software\\Jamie\\fsb\\Settings";
 std::atomic<HINSTANCE> instance_handle;
 std::atomic<HANDLE> process_handle;
 std::atomic<HANDLE> process_heap_handle;
+std::vector<process_window> windows;
 
 // Function declarations
 static bool create_reg();
 static bool get_gui_mode();
 static bool set_gui_mode(bool mode);
 static void init_console();
+bool EnumWindowsProc(HWND window_handle, LPARAM message_param);
 
 int __stdcall wmain(int argc, wchar_t* argv[]) {
     // Set the process handles on application initialization
@@ -84,7 +86,6 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
     } else {
         init_console();
         std::wcout << L"Hello, World!\r\n";
-
     }
 
     CloseHandle(process_handle.load());
@@ -332,4 +333,22 @@ static void init_console() {
 
     // Since if the console doesn't allocate, the app exits, this should never fail, So cast to void
     (void)SetConsoleTitleW(L"Full Screen Borderless");
+}
+
+bool EnumWindowsProc(HWND window_handle, LPARAM message_param) {
+    UNREFERENCED_PARAMETER(message_param);
+
+    DWORD process_id;
+    GetWindowThreadProcessId(window_handle, &process_id);
+
+    wchar_t buffer[256];
+    GetWindowTextW(window_handle, buffer, std::size(buffer));
+
+    std::wstring title(buffer);
+
+    if (IsWindowVisible(window_handle) && !title.empty()) {
+        windows.push_back({process_id, window_handle, title});
+    }
+
+    return true;
 }
