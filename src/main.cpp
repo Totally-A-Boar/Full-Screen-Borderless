@@ -63,11 +63,14 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
     }
 
     for (int i = 0; i < argc; ++i) {
-        const std::wstring arg = argv[i];
+        std::wstring arg = argv[i];
         if (arg == L"--set-use-gui" || arg == L"-set-use-gui" || arg == L"/set-use-gui") {
             if (!set_gui_mode(true)) {
                 return FSB_REGISTRY_SET_FAILURE;
             }
+
+            std::wcout << L"Successfully set fsb GUI mode to ";
+            return 0;
         }
     }
 
@@ -81,7 +84,7 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
     } else {
         init_console();
         std::wcout << L"Hello, World!\r\n";
-        _getwch();
+
     }
 
     CloseHandle(process_handle.load());
@@ -185,7 +188,6 @@ static bool get_gui_mode() {
         MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
             MB_OK | MB_ICONERROR);
         exit(FSB_REGISTRY_GET_FAILURE);
-        return false;
     }
 
     return value != 0;
@@ -257,11 +259,6 @@ static bool set_gui_mode(bool mode) {
 }
 
 static void init_console() {
-    // By default, use UTF-16, but switch based off of allocated consoles.
-    // This is because on allocated consoles (cmd.exe based consoles) will output l i k e  t h i s
-    // because of encoding size.
-    bool output_utf8 = false;
-
     // Check if the app was called from a console
     if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
         // If not, we allocate a new one
@@ -272,7 +269,6 @@ static void init_console() {
             MessageBoxW(nullptr, L"AllocConsole error!", L"Error",
                 MB_OK | MB_ICONERROR);
         }
-        output_utf8 = true; // We're using UTF-8 because it's an allocated console
     }
 
     // Open the console streams
@@ -318,22 +314,22 @@ static void init_console() {
     }
 
     // Casting to void because if these fail, it won't break the application
-    if (!output_utf8) {
-        // Unbuffered mode
-        (void)setvbuf(stdout, nullptr, _IONBF, 0);
-        (void)setvbuf(stderr, nullptr, _IONBF, 0);
-        (void)setvbuf(stdin, nullptr, _IONBF, 0);
+    // Unbuffered mode
+    (void)setvbuf(stdout, nullptr, _IONBF, 0);
+    (void)setvbuf(stderr, nullptr, _IONBF, 0);
+    (void)setvbuf(stdin, nullptr, _IONBF, 0);
 
-        (void)_setmode(_fileno(stdout), _O_U16TEXT);
-        (void)_setmode(_fileno(stderr), _O_U16TEXT);
-        (void)_setmode(_fileno(stdin), _O_U16TEXT);
-    } else {
-        (void)_setmode(_fileno(stdout), _O_U8TEXT);
-        (void)_setmode(_fileno(stderr), _O_U8TEXT);
-        (void)_setmode(_fileno(stdin), _O_U8TEXT);
-    }
+    // UTF-8 displays without error on all consoles and has more characters than basic ASCII,
+    // however, Unicode characters will not display with this.
+    // UTF-8 on Windows is really hard because of Microsoft's obsession with UTF-16 when the
+    // Windows API was created. If I did try to use UTF-8 as the actual encoding in everything
+    // It would be wildly inconsistent and have a conversion every other line.
+    // We don't set it to UTF-16 because i t  w o u l d  o u t p u t  l i k e  t h i s on every
+    // console that doesn't support UTF-16 output.
+    (void)_setmode(_fileno(stdout), _O_U8TEXT);
+    (void)_setmode(_fileno(stderr), _O_U8TEXT);
+    (void)_setmode(_fileno(stdin), _O_U8TEXT);
 
-    // Since if the console doesn't allocate, the app exits, this should never fail.
-    // So cast to void
+    // Since if the console doesn't allocate, the app exits, this should never fail, So cast to void
     (void)SetConsoleTitleW(L"Full Screen Borderless");
 }
