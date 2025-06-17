@@ -47,7 +47,7 @@ std::atomic<HANDLE> process_heap_handle;
 // Function declarations
 static bool create_reg();
 static bool get_gui_mode();
-static bool set_gui_mode(const bool mode);
+static bool set_gui_mode(bool mode);
 static void init_console();
 
 int __stdcall wmain(int argc, wchar_t* argv[]) {
@@ -71,8 +71,7 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
         }
     }
 
-    bool mode = get_gui_mode();
-    if (mode) {
+    if (get_gui_mode()) {
         INITCOMMONCONTROLSEX iccex;
         iccex.dwSize = sizeof(iccex);
         iccex.dwICC = ICC_WIN95_CLASSES;
@@ -80,7 +79,9 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
             return FSB_COMCTL_INIT_FAILURE;
         }
     } else {
-
+        init_console();
+        std::wcout << L"Hello, World!\r\n";
+        _getwch();
     }
 
     CloseHandle(process_handle.load());
@@ -89,18 +90,18 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
 
 static bool create_reg() {
     HKEY key_handle;
-    const LONG result = RegCreateKeyExW(HKEY_CURRENT_USER, FSB_REG_KEY.data(),
+    LONG result = RegCreateKeyExW(HKEY_CURRENT_USER, FSB_REG_KEY.data(),
         0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE,
         nullptr, &key_handle, nullptr);
 
     if (result != ERROR_SUCCESS) {
         // Bypass the Clang-Tidy because these ancient function needs a C-Style array
-        wchar_t buffer[256];
+        wchar_t* buffer = nullptr;
         (void)FormatMessageW(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr, static_cast<DWORD>(result),
-            0, buffer, 0, nullptr);
+            0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr);
 
         const std::wstring description(buffer);
         LocalFree(buffer);
@@ -115,7 +116,39 @@ static bool create_reg() {
                L"Description: " << description.c_str();
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
+        return false;
+    }
+
+    DWORD value = 0;
+    result = RegSetValueExW(key_handle, L"gui_mode", 0, REG_DWORD,
+        reinterpret_cast<BYTE*>(&value), sizeof(DWORD));
+
+    if (result != ERROR_SUCCESS) {
+        // Bypass the Clang-Tidy because these ancient function needs a C-Style array
+        wchar_t* buffer = nullptr;
+        (void)FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr, static_cast<DWORD>(result),
+            0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr);
+
+        const std::wstring description(buffer);
+        LocalFree(buffer);
+
+        std::wostringstream oss;
+        oss << L"An error occurred while trying to create the registry configuration for the " \
+               L"application!\r\n\r\n" \
+               L"Location: Line 125, fsb.exe (Main.cpp::create_reg)\r\n" \
+               L"Operation: Advapi32.dll!RegSetValueExW\r\n" \
+               L"Return value: " << result << L"\r\n" \
+               L"Error code: " << GetLastError() << L"\r\n" \
+               L"Description: " << description.c_str();
+
+        std::wcerr << oss.str();
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
         return false;
     }
 
@@ -129,12 +162,12 @@ static bool get_gui_mode() {
         RRF_RT_REG_DWORD, &type, &value, &size);
 
     if (result != ERROR_SUCCESS || type != REG_DWORD) {
-        wchar_t buffer[256];
+        wchar_t* buffer = nullptr;
         (void)FormatMessageW(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr, static_cast<DWORD>(result),
-            0, buffer, 0, nullptr);
+            0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr);
 
         const std::wstring description(buffer);
         LocalFree(buffer);
@@ -149,26 +182,28 @@ static bool get_gui_mode() {
                L"Description: " << description.c_str();
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
+        exit(FSB_REGISTRY_GET_FAILURE);
         return false;
     }
 
     return value != 0;
 }
 
-static bool set_gui_mode(const bool mode) {
+static bool set_gui_mode(bool mode) {
     HKEY key_handle;
     DWORD value = mode;
     LONG result = RegOpenKeyExW(HKEY_CURRENT_USER, FSB_REG_KEY.data(), 0,
         KEY_WRITE, &key_handle);
 
     if (result != ERROR_SUCCESS) {
-        wchar_t buffer[256];
+        wchar_t* buffer = nullptr;
         (void)FormatMessageW(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr, static_cast<DWORD>(result),
-            0, buffer, 0, nullptr);
+            0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr);
 
         const std::wstring description(buffer);
         LocalFree(buffer);
@@ -183,7 +218,8 @@ static bool set_gui_mode(const bool mode) {
                L"Description: " << description.c_str();
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
         return false;
     }
 
@@ -191,12 +227,12 @@ static bool set_gui_mode(const bool mode) {
         reinterpret_cast<BYTE*>(&value), sizeof(DWORD));
 
     if (result != ERROR_SUCCESS) {
-        wchar_t buffer[256];
+        wchar_t* buffer = nullptr;
         (void)FormatMessageW(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr, static_cast<DWORD>(result),
-            0, buffer, 0, nullptr);
+            0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr);
 
         const std::wstring description(buffer);
         LocalFree(buffer);
@@ -211,7 +247,8 @@ static bool set_gui_mode(const bool mode) {
                L"Description: " << description.c_str();
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
         return false;
     }
 
@@ -228,7 +265,13 @@ static void init_console() {
     // Check if the app was called from a console
     if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
         // If not, we allocate a new one
-        (void)AllocConsole();
+        // If for some reason this function fails, it's most likely because of no resources being
+        // available, which means that the detailed error message most likely won't load, so
+        // show a short one and exit
+        if (!AllocConsole()) {
+            MessageBoxW(nullptr, L"AllocConsole error!", L"Error",
+                MB_OK | MB_ICONERROR);
+        }
         output_utf8 = true; // We're using UTF-8 because it's an allocated console
     }
 
@@ -243,12 +286,12 @@ static void init_console() {
                L"Error code: " << errno << L"\r\n";
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
         exit(errno);
-        return;
     }
 
-    if (_wfreopen_s(&fp, L"CONOUT$", L"w", stderr);) {
+    if (_wfreopen_s(&fp, L"CONOUT$", L"w", stderr)) {
         std::wostringstream oss;
         oss << L"An error occurred while trying to initialize the console window.\r\n\r\n" \
                L"Location: Line 251, fsb.exe (Main.cpp::init_console)\r\n" \
@@ -256,9 +299,9 @@ static void init_console() {
                L"Error code: " << errno << L"\r\n";
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
         exit(errno);
-        return;
     }
 
     if (_wfreopen_s(&fp, L"CONIN$", L"r", stdin)) {
@@ -269,24 +312,28 @@ static void init_console() {
                L"Error code: " << errno << L"\r\n";
 
         std::wcerr << oss.str();
-        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error", MB_OK);
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - Error",
+            MB_OK | MB_ICONERROR);
         exit(errno);
-        return;
     }
 
+    // Casting to void because if these fail, it won't break the application
     if (!output_utf8) {
-        (void)setvbuf(stdout, NULL, _IONBF, 0);
-        (void)setvbuf(stderr, NULL, _IONBF, 0);
-        (void)setvbuf(stdin, NULL, _IONBF, 0);
+        // Unbuffered mode
+        (void)setvbuf(stdout, nullptr, _IONBF, 0);
+        (void)setvbuf(stderr, nullptr, _IONBF, 0);
+        (void)setvbuf(stdin, nullptr, _IONBF, 0);
 
         (void)_setmode(_fileno(stdout), _O_U16TEXT);
         (void)_setmode(_fileno(stderr), _O_U16TEXT);
         (void)_setmode(_fileno(stdin), _O_U16TEXT);
     } else {
-        _setmode(_fileno(stdout), _O_U8TEXT);
-        _setmode(_fileno(stderr), _O_U8TEXT);
-        _setmode(_fileno(stdin), _O_U8TEXT);
+        (void)_setmode(_fileno(stdout), _O_U8TEXT);
+        (void)_setmode(_fileno(stderr), _O_U8TEXT);
+        (void)_setmode(_fileno(stdin), _O_U8TEXT);
     }
 
-    SetConsoleTitleW(L"Full Screen Borderless");
+    // Since if the console doesn't allocate, the app exits, this should never fail.
+    // So cast to void
+    (void)SetConsoleTitleW(L"Full Screen Borderless");
 }
