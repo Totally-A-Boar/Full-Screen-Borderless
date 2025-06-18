@@ -10,7 +10,8 @@ Checks: >
   -modernize-use-trailing-return-type
 
 CheckOptions:
-  # Naming rules - enforce snake_case for most elements
+  # Naming rules
+  # I prefer snake_case for modern C++, when not following Win32 style code.
   - key: readability-identifier-naming.NamespaceCase
     value: lower_case
 

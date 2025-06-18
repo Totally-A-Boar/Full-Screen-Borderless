@@ -303,6 +303,32 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
 
     return 1; // returning true
 }
+
+void show_console_menu() {
+    int selected = 0;
+    wchar_t key;
+
+    while (true) {
+        std::wcout << L"\033[2J\033[H"; // Clear the screen
+        std::wcout << L"Select a process to fullscreen:\r\n\r\n";
+
+        for (size_t i = 0; i < windows.size(); ++i) {
+            if (i == selected) {
+                std::wcout << L" * ";
+            } else {
+                std::wcout << L"   ";
+            }
+
+            std::wcout << windows[i].title << L"(Process Id: " << windows[i].process_id << ")\r\n";
+        }
+
+        std::wcout << L"\r\nPress 'Q' or escape to quit.";
+
+        key = _getwch();
+        
+    }
+}
+
 } // namespace fsb
 
 int __stdcall wmain(int argc, wchar_t* argv[]) {
@@ -311,8 +337,8 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
     fsb::process_handle.store(GetCurrentProcess());
     fsb::process_heap_handle.store(GetProcessHeap());
 
-    // RegCreateKeyExW doesn't fail if the key already exists,
-    // making it safe to always run at startup
+    // RegCreateKeyExW doesn't fail if the key already exists, making it safe to always run at
+    // startup
     if (!fsb::create_reg()) {
         return FSB_REGISTRY_INIT_FAILURE;
     }
