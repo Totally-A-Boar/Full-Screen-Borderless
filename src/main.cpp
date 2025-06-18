@@ -43,7 +43,7 @@ std::atomic<HANDLE> process_heap_handle;
 std::vector<process_window> windows;
 
 // Functions
-static bool create_reg() {
+bool create_reg() {
     HKEY key_handle;
     LONG result = RegCreateKeyExW(HKEY_CURRENT_USER, FSB_REG_KEY.data(),
         0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE,
@@ -111,7 +111,7 @@ static bool create_reg() {
     return true;
 }
 
-static bool get_gui_mode() {
+bool get_gui_mode() {
     DWORD value = 0, type = 0, size = sizeof(DWORD);
     LONG result = RegGetValueW(HKEY_CURRENT_USER, FSB_REG_KEY.data(), L"gui_mode",
         RRF_RT_REG_DWORD, &type, &value, &size);
@@ -145,7 +145,7 @@ static bool get_gui_mode() {
     return value != 0;
 }
 
-static bool set_gui_mode(bool mode) {
+bool set_gui_mode(bool mode) {
     HKEY key_handle;
     DWORD value = mode;
     LONG result = RegOpenKeyExW(HKEY_CURRENT_USER, FSB_REG_KEY.data(), 0,
@@ -210,7 +210,7 @@ static bool set_gui_mode(bool mode) {
     return true;
 }
 
-static void init_console() {
+void init_console() {
     // Check if the app was called from a console
     if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
         // If not, we allocate a new one
@@ -304,12 +304,28 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     return 1; // returning true
 }
 
+void clear_console() {
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD count;
+    DWORD cell_count;
+
+    if (!GetConsoleScreenBufferInfo(console_handle, &csbi)) return;
+
+    cell_count = csbi.dwSize.X * csbi.dwSize.Y;
+
+    COORD home_coords = {0, 0};
+
+    FillConsoleOutputCharacterW(console_handle, L' ', cell_count, home_coords, &count);
+    FillConsoleOutputAttribute(console_handle, csbi.wAttributes, cell_count, home_coords, &count);
+    SetConsoleCursorPosition(console_handle, home_coords);
+}
+
 void show_console_menu() {
     int selected = 0;
-    wchar_t key;
 
     while (true) {
-        std::wcout << L"\033[2J\033[H"; // Clear the screen
+        clear_console(); // Clear the screen
         std::wcout << L"Select a process to fullscreen:\r\n\r\n";
 
         for (size_t i = 0; i < windows.size(); ++i) {
@@ -319,13 +335,15 @@ void show_console_menu() {
                 std::wcout << L"   ";
             }
 
-            std::wcout << windows[i].title << L"(Process Id: " << windows[i].process_id << ")\r\n";
+            std::wcout << windows[i].title << L" (Process Id: " << windows[i].process_id << ")\r\n";
         }
 
         std::wcout << L"\r\nPress 'Q' or escape to quit.";
 
-        key = _getwch();
-        
+        wchar_t key = _getwch();
+        if (key == 0x1B || key == 0x121) {
+            exit(0);
+        }
     }
 }
 
@@ -373,6 +391,7 @@ int __stdcall wmain(int argc, wchar_t* argv[]) {
         }
     } else {
         fsb::init_console();
+        fsb::show_console_menu();
 
     }
 
