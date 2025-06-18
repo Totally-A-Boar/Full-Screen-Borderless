@@ -20,6 +20,7 @@
 #define FSB_REGISTRY_GET_FAILURE  0xFB000004 // Getting a registry value failed
 #define FSB_COMCTL_INIT_FAILURE   0xFB000005 // Initializing common controls failed
 
+namespace fsb {
 // Structures
 //! Information used by the program belonging to a process's window.
 struct process_window {
@@ -34,10 +35,6 @@ struct process_window {
     std::wstring title;
 };
 
-struct runtime_config {
-    bool use_console;
-};
-
 // Global variables
 constexpr std::wstring_view FSB_REG_KEY = L"Software\\Jamie\\fsb\\Settings";
 std::atomic<HINSTANCE> instance_handle;
@@ -45,53 +42,7 @@ std::atomic<HANDLE> process_handle;
 std::atomic<HANDLE> process_heap_handle;
 std::vector<process_window> windows;
 
-// Function declarations
-static bool create_reg();
-static bool get_gui_mode();
-static bool set_gui_mode(bool mode);
-static void init_console();
-bool EnumWindowsProc(HWND window_handle, LPARAM message_param);
-
-int __stdcall wmain(int argc, wchar_t* argv[]) {
-    // Set the process handles on application initialization
-    instance_handle.store(GetModuleHandleW(nullptr));
-    process_handle.store(GetCurrentProcess());
-    process_heap_handle.store(GetProcessHeap());
-
-    // RegCreateKeyExW doesn't fail if the key already exists,
-    // making it safe to always run at startup
-    if (!create_reg()) {
-        return FSB_REGISTRY_INIT_FAILURE;
-    }
-
-    for (int i = 0; i < argc; ++i) {
-        std::wstring arg = argv[i];
-        if (arg == L"--set-use-gui" || arg == L"-set-use-gui" || arg == L"/set-use-gui") {
-            if (!set_gui_mode(true)) {
-                return FSB_REGISTRY_SET_FAILURE;
-            }
-
-            std::wcout << L"Successfully set fsb GUI mode to ";
-            return 0;
-        }
-    }
-
-    if (get_gui_mode()) {
-        INITCOMMONCONTROLSEX iccex;
-        iccex.dwSize = sizeof(iccex);
-        iccex.dwICC = ICC_WIN95_CLASSES;
-        if (!InitCommonControlsEx(&iccex)) {
-            return FSB_COMCTL_INIT_FAILURE;
-        }
-    } else {
-        init_console();
-        std::wcout << L"Hello, World!\r\n";
-    }
-
-    CloseHandle(process_handle.load());
-    return 0;
-}
-
+// Functions
 static bool create_reg() {
     HKEY key_handle;
     LONG result = RegCreateKeyExW(HKEY_CURRENT_USER, FSB_REG_KEY.data(),
@@ -335,7 +286,7 @@ static void init_console() {
     (void)SetConsoleTitleW(L"Full Screen Borderless");
 }
 
-bool EnumWindowsProc(HWND window_handle, LPARAM message_param) {
+int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     UNREFERENCED_PARAMETER(message_param);
 
     DWORD process_id;
@@ -350,5 +301,56 @@ bool EnumWindowsProc(HWND window_handle, LPARAM message_param) {
         windows.push_back({process_id, window_handle, title});
     }
 
-    return true;
+    return 1; // returning true
 }
+} // namespace fsb
+
+int __stdcall wmain(int argc, wchar_t* argv[]) {
+    // Set the process handles on application initialization
+    fsb::instance_handle.store(GetModuleHandleW(nullptr));
+    fsb::process_handle.store(GetCurrentProcess());
+    fsb::process_heap_handle.store(GetProcessHeap());
+
+    // RegCreateKeyExW doesn't fail if the key already exists,
+    // making it safe to always run at startup
+    if (!fsb::create_reg()) {
+        return FSB_REGISTRY_INIT_FAILURE;
+    }
+
+    for (int i = 0; i < argc; ++i) {
+        std::wstring arg = argv[i];
+        if (arg == L"--set-use-gui" || arg == L"-set-use-gui" || arg == L"/set-use-gui") {
+            if (!fsb::set_gui_mode(true)) {
+                return FSB_REGISTRY_SET_FAILURE;
+            }
+
+            std::wcout << L"Successfully set fsb GUI mode to ";
+            return 0;
+        }
+    }
+
+    EnumWindows(fsb::EnumWindowsProc, 0);
+    if (fsb::windows.empty()) {
+        std::wostringstream oss;
+        oss << L"You have launched fsb with no foreground windows! " \
+               L"Please relaunch with at least one foreground window.";
+        MessageBoxW(nullptr, oss.str().c_str(), L"fsb - No foreground windows!",
+            MB_OK | MB_ICONWARNING);
+    }
+
+    if (fsb::get_gui_mode()) {
+        INITCOMMONCONTROLSEX iccex;
+        iccex.dwSize = sizeof(iccex);
+        iccex.dwICC = ICC_WIN95_CLASSES;
+        if (!InitCommonControlsEx(&iccex)) {
+            return FSB_COMCTL_INIT_FAILURE;
+        }
+    } else {
+        fsb::init_console();
+
+    }
+
+    CloseHandle(fsb::process_handle.load());
+    return 0;
+}
+
