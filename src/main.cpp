@@ -19,6 +19,7 @@
 #define FSB_REGISTRY_SET_FAILURE  0xFB000003 // Setting a registry value failed
 #define FSB_REGISTRY_GET_FAILURE  0xFB000004 // Getting a registry value failed
 #define FSB_COMCTL_INIT_FAILURE   0xFB000005 // Initializing common controls failed
+#define FSB_CONSOLE_INIT_FAILURE  0xFB000006 // Error initializing the console
 
 namespace fsb {
 // Structures
@@ -212,21 +213,24 @@ bool set_gui_mode(bool mode) {
 
 void init_console() {
     // Check if the app was called from a console
-    if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
-        // If not, we allocate a new one
-        // If for some reason this function fails, it's most likely because of no resources being
-        // available, which means that the detailed error message most likely won't load, so
-        // show a short one and exit
-        if (!AllocConsole()) {
-            MessageBoxW(nullptr, L"AllocConsole error!", L"Error",
-                MB_OK | MB_ICONERROR);
+    if (!GetConsoleWindow()) {
+        if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
+            // If not, we allocate a new one
+            // If for some reason this function fails, it's most likely because of no resources
+            // being available, which means that the detailed error message most likely won't load,
+            // so show a short one and exit
+            if (!AllocConsole()) {
+                MessageBoxW(nullptr, L"AllocConsole error!", L"Error",
+                    MB_OK | MB_ICONERROR);
+                exit(FSB_CONSOLE_INIT_FAILURE);
+            }
         }
     }
 
-    // Open the console streams
+    // Open the console streams and check that the handles are valid
     FILE* fp;
 
-    if (_wfreopen_s(&fp, L"CONOUT$", L"w", stdout)) {
+    if (!_wfreopen_s(&fp, L"CONOUT$", L"w", stdout)) {
         std::wostringstream oss;
         oss << L"An error occurred while trying to initialize the console window.\r\n\r\n" \
                L"Location: Line 238, fsb.exe (Main.cpp::init_console)\r\n" \
@@ -239,7 +243,7 @@ void init_console() {
         exit(errno);
     }
 
-    if (_wfreopen_s(&fp, L"CONOUT$", L"w", stderr)) {
+    if (!_wfreopen_s(&fp, L"CONOUT$", L"w", stderr)) {
         std::wostringstream oss;
         oss << L"An error occurred while trying to initialize the console window.\r\n\r\n" \
                L"Location: Line 251, fsb.exe (Main.cpp::init_console)\r\n" \
@@ -252,7 +256,7 @@ void init_console() {
         exit(errno);
     }
 
-    if (_wfreopen_s(&fp, L"CONIN$", L"r", stdin)) {
+    if (!_wfreopen_s(&fp, L"CONIN$", L"r", stdin)) {
         std::wostringstream oss;
         oss << L"An error occurred while trying to initialize the console window.\r\n\r\n" \
                L"Location: Line 264, fsb.exe (Main.cpp::init_console)\r\n" \
@@ -265,6 +269,8 @@ void init_console() {
         exit(errno);
     }
 
+    std::ios::sync_with_stdio(true);
+
     // Casting to void because if these fail, it won't break the application
     // Unbuffered mode
     (void)setvbuf(stdout, nullptr, _IONBF, 0);
@@ -272,7 +278,7 @@ void init_console() {
     (void)setvbuf(stdin, nullptr, _IONBF, 0);
 
     // Active code page needs to be set to UTF-8 for proper Unicode output
-    SetConsoleOutputCP(CP_UTF8);
+    (void)SetConsoleOutputCP(CP_UTF8);
 
     // UTF-8 displays without error on all consoles and has more characters than basic ASCII,
     // however, Unicode characters will not display with this.
@@ -318,11 +324,10 @@ void clear_console() {
     HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     DWORD count;
-    DWORD cell_count;
 
     if (!GetConsoleScreenBufferInfo(console_handle, &csbi)) return;
 
-    cell_count = csbi.dwSize.X * csbi.dwSize.Y;
+    DWORD cell_count = csbi.dwSize.X * csbi.dwSize.Y;
 
     COORD home_coords = {0, 0};
 
