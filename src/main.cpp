@@ -271,6 +271,9 @@ void init_console() {
     (void)setvbuf(stderr, nullptr, _IONBF, 0);
     (void)setvbuf(stdin, nullptr, _IONBF, 0);
 
+    // Active code page needs to be set to UTF-8 for proper Unicode output
+    SetConsoleOutputCP(CP_UTF8);
+
     // UTF-8 displays without error on all consoles and has more characters than basic ASCII,
     // however, Unicode characters will not display with this.
     // UTF-8 on Windows is really hard because of Microsoft's obsession with UTF-16 when the
@@ -302,6 +305,13 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     }
 
     return 1; // returning true
+}
+
+void fullscreen_window(HWND window_handle) {
+    SetWindowLongW(window_handle, GWL_STYLE, WS_VISIBLE);
+    SetWindowPos(window_handle, HWND_TOP, 0, 0,
+        GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+        SWP_FRAMECHANGED);
 }
 
 void clear_console() {
@@ -341,8 +351,22 @@ void show_console_menu() {
         std::wcout << L"\r\nPress 'Q' or escape to quit.";
 
         wchar_t key = _getwch();
-        if (key == 0x1B || key == 0x121) {
+        if (key == 0x1B || key == L'Q' || key == L'q') {
             exit(0);
+        }
+        // Enter key
+        if (key == 0x0D) {
+            fullscreen_window(windows[selected].window_handle);
+        }
+        // Up arrow
+        if (key == 72) {
+            if (selected > 0) selected--;
+            else selected = static_cast<int>(windows.size()) - 1;
+        }
+        // Down arrow
+        if (key == 80) {
+            if (selected < static_cast<int>(windows.size()) - 1) selected++;
+            else selected = 0;
         }
     }
 }
