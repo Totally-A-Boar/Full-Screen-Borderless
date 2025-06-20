@@ -23,30 +23,30 @@ if (MSVC)
 
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(fsb PRIVATE
-                _DEBUG
-                _WINDOWS
-                _UNICODE
-                UNICODE
-                WIN32_LEAN_AND_MEAN
+                _DEBUG              # Include debug specific functions and conditions
+                _WINDOWS            # Built for Windows
+                _UNICODE            # Use Wide strings and functions
+                UNICODE             # Ditto
+                WIN32_LEAN_AND_MEAN # Exclude rarely-used APIs from Windows.h
         )
 
         target_compile_options(fsb PRIVATE
-                /JMC
-                /permissive-
-                /Zc:wchar_t
-                /GS
-                /W4
-                /ZI
-                /Od
-                /sdl
-                /Zc:inline
-                /fp:precise
-                /errorReport:prompt
-                /WX
-                /Zc:forScope
-                /RTC1
-                /Gd
-                /MDd
+                /JMC                # Just My Code debugging
+                /permissive-        # C++ STL conforming code
+                /Zc:wchar_t         # Treat wchar_t as a native type
+                /GS                 # Buffer security checks
+                /W4                 # Warning level 4
+                /ZI                 # Debug information format
+                /Od                 # Disable optimizations
+                /sdl                # Security development lifecycle
+                /Zc:inline          # Remove unreferenced inline functions from compiled binary
+                /fp:precise         # Precise float-point semantics
+                /errorReport:prompt # Report build errors immediately
+                /WX                 # Treat warnings as errors
+                /Zc:forScope        # for loop variables are only for the scope
+                /RTC1               # Enable runtime error checks
+                /Gd                 # __cdecl calling conventions
+                /MDd                # Multi-threaded debug DLL CRT (ucrtbased.dll, vcruntime140d.dll, etc)
                 /FC
                 /EHsc
                 /nologo
@@ -62,8 +62,7 @@ if (MSVC)
                 /MANIFEST
                 /NXCOMPAT
                 /DYNAMICBASE
-                /SUBSYSTEM:WINDOWS
-                /ENTRY:wmainCRTStartup
+                /SUBSYSTEM:CONSOLE
                 /PDB:${CMAKE_BINARY_DIR}/fsb.pdb
                 /ILK:${CMAKE_BINARY_DIR}/fsb.ilk
                 /NOLOGO
@@ -112,8 +111,7 @@ if (MSVC)
                 /MANIFEST
                 /NXCOMPAT
                 /DYNAMICBASE
-                /SUBSYSTEM:WINDOWS
-                /ENTRY:wmainCRTStartup
+                /SUBSYSTEM:CONSOLE
                 /OPT:REF
                 /OPT:ICF
                 /PDB:${CMAKE_BINARY_DIR}/fsb.pdb
@@ -160,7 +158,7 @@ elseif (MINGW)
                 -Wl,--dynamicbase    # ASLR
                 -static-libgcc       # Optional: avoid DLL dependency
                 -static-libstdc++    # Optional: avoid DLL dependency
-                -mwindows            # Use Windows subsystem
+                -mconsole            # Use console subsystem
                 -m32                 # 32-bit build; omit for 64-bit
                 -lkernel32 -luser32 -ladvapi32 -lcomctl32
                 -g                   # Include symbols in output
@@ -200,8 +198,7 @@ elseif (MINGW)
                 -static-libgcc             # Avoid DLL dependencies
                 -static-libstdc++          # Avoid DLL dependencies
                 -s                         # Strip symbol table and relocation info
-                -mwindows                  # Use Windows GUI subsystem
-                -m32                       # Build 32-bit binary (omit if 64-bit)
+                -mconsole                  # Use console subsystem
                 -lkernel32 -luser32 -ladvapi32 -lcomctl32
         )
 
@@ -246,8 +243,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_BUILD_TYPE STREQUAL "De
             -Wl,/MANIFEST
             -Wl,/NXCOMPAT
             -Wl,/DYNAMICBASE
-            -Wl,/SUBSYSTEM:WINDOWS
-            -Wl,/ENTRY:wmainCRTStartup
+            -Wl,/SUBSYSTEM:CONSOLE
             -Wl,/PDB:"${CMAKE_BINARY_DIR}/fsb.pdb"
             -Wl,/PGD:"${CMAKE_BINARY_DIR}/fsb.pgd"
             -Wl,/ILK:"${CMAKE_BINARY_DIR}/fsb.ilk"
