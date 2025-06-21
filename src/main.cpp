@@ -55,6 +55,15 @@ std::vector<process_window> windows;
 //! unless there are larger problems than just the one call failing
 //! (e.g. the system is out of memory).
 void init_console() {
+    // Hide the cusor
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursor_info;
+
+    GetConsoleCursorInfo(console_handle, &cursor_info);
+    cursor_info.dwSize = sizeof(cursor_info);
+    cursor_info.bVisible = FALSE;
+    SetConsoleCursorInfo(console_handle, &cursor_info);
+
     // Casting to void because if these fail, it won't break the application
     // Unbuffered mode
     (void)setvbuf(stdout, nullptr, _IONBF, 0);
@@ -99,8 +108,8 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     }
 
     // Saved for display information
-    DWORD process_id;
-    if (const DWORD result = GetWindowThreadProcessId(window_handle, &process_id); result == 0) {
+    DWORD process_id = 0;
+    if (GetWindowThreadProcessId(window_handle, &process_id) == 0) {
         wchar_t* buffer = nullptr; // It allocates the buffer so make it a pointer
         (void)FormatMessageW(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
@@ -115,7 +124,7 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
         oss << L"An error occurred while trying to get the process ID for a window.\r\n\r\n" \
                L"Location: Line 103, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
                L"Operation: User32.dll!GetWindowThreadProcessId\r\n" \
-               L"Return value: " << result << L"\r\n" \
+               L"Return value: 0x0" << L"\r\n" \
                L"Error code: " << GetLastError() << L"\r\n" \
                L"Description: " << description.c_str();
 
@@ -125,29 +134,29 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
 
     // Ditto
     wchar_t buffer[256];
-    if (const int result = GetWindowTextW(window_handle, buffer,
-        static_cast<int>(std::size(buffer)));
-        result == 0) {
-        wchar_t* err_buffer = nullptr; // It allocates the buffer so make it a pointer
-        (void)FormatMessageW(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-            FORMAT_MESSAGE_IGNORE_INSERTS,
-            nullptr, GetLastError(),
-            0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
+    if (GetWindowTextW(window_handle, buffer, std::size(buffer)) == 0) {
+        if (GetLastError() != 0) {
+            wchar_t* err_buffer = nullptr; // It allocates the buffer so make it a pointer
+            (void)FormatMessageW(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                nullptr, GetLastError(),
+                0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-        std::wstring description(err_buffer);
-        LocalFree(err_buffer);
+            std::wstring description(err_buffer ? err_buffer : L"Unknown error");
+            if (err_buffer) LocalFree(err_buffer);
 
-        std::wostringstream oss;
-        oss << L"An error occurred while trying to get the title for a window.\r\n\r\n" \
-               L"Location: Line 128, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
-               L"Operation: User32.dll!GetWindowTextW\r\n" \
-               L"Return value: " << result << L"\r\n" \
-               L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
-               L"Description: " << description.c_str();
+            std::wostringstream oss;
+            oss << L"An error occurred while trying to get the title for a window.\r\n\r\n" \
+                   L"Location: Line 128, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
+                   L"Operation: User32.dll!GetWindowTextW\r\n" \
+                   L"Return value: 0x0" << L"\r\n" \
+                   L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
+                   L"Description: " << description.c_str();
 
-        std::wcerr << oss.str();
-        exit(FSB_GENERIC_FAILURE);
+            std::wcerr << oss.str();
+            return 1;
+        }
     }
 
     // Put the buffer into a proper string and check if the window is a foreground window
@@ -197,15 +206,15 @@ void clear_console() {
 }
 
 void show_console_menu() {
-    int selected = 0;
+    int selected_x = 0;
 
     while (true) {
         clear_console(); // Clear the screen
         std::wcout << L"Select a process to fullscreen:\r\n\r\n";
 
         for (size_t i = 0; i < windows.size(); ++i) {
-            if (i == selected) {
-                std::wcout << L" * ";
+            if (i == selected_x) {
+                std::wcout << L" > ";
             } else {
                 std::wcout << L"   ";
             }
@@ -215,8 +224,10 @@ void show_console_menu() {
             std::wcout << oss.str();
         }
 
-        std::wcout << L"\r\nPress 'r' to refresh\r\n";
-        std::wcout << L"Press 'Q' or escape to quit.";
+        // Check how many = signs to fill a row on the screen
+        
+        std::wcout << L"\r\n\r\n";
+        std::wcout << L"R: refresh ";
 
         wchar_t key = _getwch();
         if (key == 0x1B || key == L'Q' || key == L'q') {
@@ -224,7 +235,7 @@ void show_console_menu() {
         }
         // Enter key
         if (key == L'\r') {
-            fullscreen_window(windows[selected].window_handle);
+            fullscreen_window(windows[selected_x].window_handle);
             exit(0);
         }
         // R key
@@ -234,13 +245,13 @@ void show_console_menu() {
         }
         // Up arrow
         if (key == 72) {
-            if (selected > 0) selected--;
-            else selected = static_cast<int>(windows.size()) - 1;
+            if (selected_x > 0) selected_x--;
+            else selected_x = static_cast<int>(windows.size()) - 1;
         }
         // Down arrow
         if (key == 80) {
-            if (selected < static_cast<int>(windows.size()) - 1) selected++;
-            else selected = 0;
+            if (selected_x < static_cast<int>(windows.size()) - 1) selected_x++;
+            else selected_x = 0;
         }
     }
 }
