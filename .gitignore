@@ -76,9 +76,5 @@ Desktop.ini
 *.log
 *.tmp
 
-# Ignore ROMs or large binaries (if any)
-*.sfc
-*.smc
-*.zip
-*.bin
-roms/
+# Specifically avoid anything in third_party
+third_party/*
