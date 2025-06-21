@@ -78,3 +78,4 @@ Desktop.ini
 
 # Specifically avoid anything in third_party
 third_party/*
+!third_party/colors
