@@ -76,6 +76,9 @@ Desktop.ini
 *.log
 *.tmp
 
+# Don't include the original
+src/main_og.cpp
+
 # Specifically avoid anything in third_party
 third_party/*
 !third_party/colors
