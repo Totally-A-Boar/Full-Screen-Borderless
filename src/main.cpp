@@ -225,9 +225,66 @@ void show_console_menu() {
         }
 
         // Check how many = signs to fill a row on the screen
-        
-        std::wcout << L"\r\n\r\n";
-        std::wcout << L"R: refresh ";
+        HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (console_handle == INVALID_HANDLE_VALUE) {
+            wchar_t* err_buffer = nullptr; // It allocates the buffer so make it a pointer
+            (void)FormatMessageW(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                nullptr, GetLastError(),
+                0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
+
+            std::wstring description(err_buffer ? err_buffer : L"Unknown error");
+            if (err_buffer) LocalFree(err_buffer);
+
+            std::wostringstream oss;
+            oss << L"An error occurred while trying to get the handle to the console.\r\n\r\n" \
+                   L"Location: Line 228, fsb.exe (Main.cpp::show_console_menu)\r\n" \
+                   L"Operation: Kernel32.dll!GetStdHandle\r\n" \
+                   L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
+                   L"Description: " << description.c_str();
+
+            std::wcerr << oss.str();
+            exit(FSB_GENERIC_FAILURE);
+        }
+
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        if (!GetConsoleScreenBufferInfo(console_handle, &csbi)) {
+            wchar_t* err_buffer = nullptr; // It allocates the buffer so make it a pointer
+            (void)FormatMessageW(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                nullptr, GetLastError(),
+                0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
+
+            std::wstring description(err_buffer ? err_buffer : L"Unknown error");
+            if (err_buffer) LocalFree(err_buffer);
+
+            std::wostringstream oss;
+            oss << L"An error occurred while trying to get the console buffer info.\r\n\r\n" \
+                   L"Location: Line 252, fsb.exe (Main.cpp::show_console_menu)\r\n" \
+                   L"Operation: Kernel32.dll!GetConsoleScreenBufferInfo\r\n" \
+                   L"Return value: false" << L"\r\n" \
+                   L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
+                   L"Description: " << description.c_str();
+
+            std::wcerr << oss.str();
+        }
+
+        int width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+        int height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+        int cursor_y = csbi.dwCursorPosition.Y + csbi.srWindow.Top;
+
+        int lines_to_move = (height - 2) - cursor_y;
+
+        for (int i = 0; i < lines_to_move; ++i) {
+            std::wcout << L"\r\n";
+        }
+
+        std::wstring row(width, L'=');
+
+        std::wcout << row << L"\r\n";
+        std::wcout << L"[ R ]efresh";
 
         wchar_t key = _getwch();
         if (key == 0x1B || key == L'Q' || key == L'q') {
