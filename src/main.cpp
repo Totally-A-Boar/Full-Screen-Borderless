@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "../third_party/colors/include/colors.hpp"
+#include "../third_party/colors/include/colors/colors.hpp"
 
 // Custom error codes for specific cases
 #define FSB_NO_ERROR              0x00000000 // No error
