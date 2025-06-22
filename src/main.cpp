@@ -1,7 +1,7 @@
 #include <Windows.h>
+#include <conio.h>
 #include <fcntl.h>
 #include <io.h>
-#include <conio.h>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "../third_party/colors/include/colors.hpp"
 
 // Custom error codes for specific cases
 #define FSB_NO_ERROR              0x00000000 // No error
@@ -214,14 +215,18 @@ void show_console_menu() {
 
         for (size_t i = 0; i < windows.size(); ++i) {
             if (i == selected_x) {
-                std::wcout << L" > ";
+                // For some reason colors.hpp doesn't work on Wide chars
+                std::wcout << L"   ";
+                std::cout << colors::grey << colors::on_white;
             } else {
+                std::cout << colors::reset;
                 std::wcout << L"   ";
             }
 
             std::wostringstream oss;
             oss << windows[i].title << L" (Process Id: " << windows[i].process_id << ")\r\n";
             std::wcout << oss.str();
+            std::cout << colors::reset;
         }
 
         // Check how many = signs to fill a row on the screen
@@ -284,7 +289,7 @@ void show_console_menu() {
         std::wstring row(width, L'=');
 
         std::wcout << row << L"\r\n";
-        std::wcout << L"[ R ]efresh";
+        std::wcout << L"[ Q ]uit [ R ]efresh [ Enter ] Apply";
 
         wchar_t key = _getwch();
         if (key == 0x1B || key == L'Q' || key == L'q') {
