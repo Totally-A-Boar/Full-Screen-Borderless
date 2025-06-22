@@ -16,6 +16,8 @@ endif ()
 
 set(CMAKE_GENERATOR_PLATFORM Win32)
 
+target_include_directories(fsb PRIVATE ${CMAKE_SOURCE_DIR}/third_party)
+
 # Compiler switch
 if (MSVC)
     # Always create this directory as the compiler will fail if it doesn't exist.
