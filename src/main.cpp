@@ -36,7 +36,7 @@ struct process_window {
     HWND window_handle;
 
     //! Title of the window to display in the interface
-    std::wstring title;
+    std::string title;
 };
 
 // Global variable(s)
@@ -85,34 +85,18 @@ std::wstring utf8_to_utf16(std::string_view input) {
 //! unless there are larger problems than just the one call failing
 //! (e.g. the system is out of memory).
 void init_console() {
-    // Hide the cusor
+    // Casting to void because if these fail, it won't break the application
+    // Hide the cursor
     HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_CURSOR_INFO cursor_info;
 
-    GetConsoleCursorInfo(console_handle, &cursor_info);
-    cursor_info.dwSize = sizeof(cursor_info);
-    cursor_info.bVisible = FALSE;
-    SetConsoleCursorInfo(console_handle, &cursor_info);
-
-    // Casting to void because if these fail, it won't break the application
-    // Unbuffered mode
-    (void)setvbuf(stdout, nullptr, _IONBF, 0);
-    (void)setvbuf(stderr, nullptr, _IONBF, 0);
-    (void)setvbuf(stdin, nullptr, _IONBF, 0);
+    (void)GetConsoleCursorInfo(console_handle, &cursor_info);
+    cursor_info.bVisible = false;
+    (void)SetConsoleCursorInfo(console_handle, &cursor_info);
 
     // Active code page needs to be set to UTF-8 for proper Unicode output
     (void)SetConsoleOutputCP(CP_UTF8);
 
-    // UTF-8 displays without error on all consoles and has more characters than basic ASCII,
-    // however, Unicode characters will not display with this.
-    // UTF-8 on Windows is really hard because of Microsoft's obsession with UTF-16 when the
-    // Windows API was created. If I did try to use UTF-8 as the actual encoding in everything
-    // It would be wildly inconsistent and have a conversion every other line.
-    // We don't set it to UTF-16 because i t  w o u l d  o u t p u t  l i k e  t h i s on every
-    // console that doesn't support UTF-16 output.
-    (void)_setmode(_fileno(stdout), _O_U8TEXT);
-    (void)_setmode(_fileno(stderr), _O_U8TEXT);
-    (void)_setmode(_fileno(stdin), _O_U8TEXT);
 
     // Set the title and cast to void because it shouldn't fail unless there are memory issues
     // which would probably crash the app or the OS entirely.
@@ -147,18 +131,18 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
             nullptr, GetLastError(),
             0, reinterpret_cast<wchar_t*>(&buffer), 0, nullptr);
 
-        std::wstring description(buffer ? buffer : L"Unknown error");
+        std::string description = utf16_to_utf8(buffer ? buffer : L"Unknown error.");
         if (buffer) LocalFree(buffer);
 
-        std::wostringstream oss;
-        oss << L"An error occurred while trying to get the process ID for a window.\r\n\r\n" \
-               L"Location: Line 103, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
-               L"Operation: User32.dll!GetWindowThreadProcessId\r\n" \
-               L"Return value: 0x0" << L"\r\n" \
-               L"Error code: " << GetLastError() << L"\r\n" \
-               L"Description: " << description.c_str();
+        std::ostringstream oss;
+        oss << u8"An error occurred while trying to get the process ID for a window.\r\n\r\n" \
+               u8"Location: Line 142, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
+               u8"Operation: User32.dll!GetWindowThreadProcessId\r\n" \
+               u8"Return value: 0x0" << u8"\r\n" \
+               u8"Error code: " << GetLastError() << u8"\r\n" \
+               u8"Description: " << description.c_str();
 
-        std::wcerr << oss.str();
+        std::cerr << oss.str();
         return 1;
     }
 
@@ -173,24 +157,25 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
                 nullptr, GetLastError(),
                 0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-            std::wstring description(err_buffer ? err_buffer : L"Unknown error");
+            std::string description = utf16_to_utf8(err_buffer ? err_buffer : L"Unknown error.");
             if (err_buffer) LocalFree(err_buffer);
 
-            std::wostringstream oss;
-            oss << L"An error occurred while trying to get the title for a window.\r\n\r\n" \
-                   L"Location: Line 128, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
-                   L"Operation: User32.dll!GetWindowTextW\r\n" \
-                   L"Return value: 0x0" << L"\r\n" \
-                   L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
-                   L"Description: " << description.c_str();
+            std::ostringstream oss;
+            oss << u8"An error occurred while trying to get the title for a window.\r\n\r\n" \
+                   u8"Location: Line 128, fsb.exe (Main.cpp::EnumWindowsProc)\r\n" \
+                   u8"Operation: User32.dll!GetWindowTextW\r\n" \
+                   u8"Return value: 0x0" << u8"\r\n" \
+                   u8"Error code: 0x" << std::hex << GetLastError() << u8"\r\n" \
+                   u8"Description: " << description;
 
-            std::wcerr << oss.str();
+            std::cerr << oss.str();
             return 1;
         }
     }
 
     // Put the buffer into a proper string and check if the window is a foreground window
-    if (std::wstring title(buffer); IsWindowVisible(window_handle) && !title.empty()) {
+    if (std::string title = utf16_to_utf8(buffer);
+        IsWindowVisible(window_handle) && !title.empty()) {
         // If so, add it to the vector
         windows.push_back({process_id, window_handle, title});
     }
@@ -213,48 +198,23 @@ void fullscreen_window(HWND window_handle) {
         SWP_FRAMECHANGED);
 }
 
-//! @brief Clears the entire console screen and resets the cursor
-//!
-//! This function retrieves the handle to the stdout stream and fills the entire consoles with
-//! spaces to simulate a clear console. The function then sets the cursor position to (0,0)
-void clear_console() {
-    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    DWORD count;
-
-    if (!GetConsoleScreenBufferInfo(console_handle, &csbi)) return;
-
-    DWORD cell_count = csbi.dwSize.X * csbi.dwSize.Y;
-
-    COORD home_coords = {0, 0};
-
-    (void)FillConsoleOutputCharacterW(console_handle, L' ', cell_count, home_coords,
-        &count);
-    (void)FillConsoleOutputAttribute(console_handle, csbi.wAttributes, cell_count, home_coords,
-        &count);
-    (void)SetConsoleCursorPosition(console_handle, home_coords);
-}
-
 void show_console_menu() {
     int selected_x = 0;
 
     while (true) {
-        clear_console(); // Clear the screen
-        std::wcout << L"Select a process to fullscreen:\r\n\r\n";
+        std::cout << u8"\033[2J\033[H"; // Clear the screen
+        std::cout << u8"Select a process to fullscreen:\r\n\r\n";
 
         for (size_t i = 0; i < windows.size(); ++i) {
+            std::cout << u8"   ";
             if (i == selected_x) {
-                // For some reason colors.hpp doesn't work on Wide chars
-                std::wcout << L"   ";
                 std::cout << colors::grey << colors::on_white;
             } else {
                 std::cout << colors::reset;
-                std::wcout << L"   ";
             }
 
-            std::wostringstream oss;
-            oss << windows[i].title << L" (Process Id: " << windows[i].process_id << ")\r\n";
-            std::wcout << oss.str();
+            std::cout << windows[i].title << u8" (Process Id: " << windows[i].process_id \
+                      << u8")\r\n";
             std::cout << colors::reset;
         }
 
@@ -268,17 +228,17 @@ void show_console_menu() {
                 nullptr, GetLastError(),
                 0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-            std::wstring description(err_buffer ? err_buffer : L"Unknown error");
+            std::string description = utf16_to_utf8(err_buffer ? err_buffer : L"Unknown error.");
             if (err_buffer) LocalFree(err_buffer);
 
-            std::wostringstream oss;
-            oss << L"An error occurred while trying to get the handle to the console.\r\n\r\n" \
-                   L"Location: Line 228, fsb.exe (Main.cpp::show_console_menu)\r\n" \
-                   L"Operation: Kernel32.dll!GetStdHandle\r\n" \
-                   L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
-                   L"Description: " << description.c_str();
+            std::ostringstream oss;
+            oss << u8"An error occurred while trying to get the handle to the console.\r\n\r\n" \
+                   u8"Location: Line 228, fsb.exe (Main.cpp::show_console_menu)\r\n" \
+                   u8"Operation: Kernel32.dll!GetStdHandle\r\n" \
+                   u8"Error code: 0x" << std::hex << GetLastError() << u8"\r\n" \
+                   u8"Description: " << description.c_str();
 
-            std::wcerr << oss.str();
+            std::cerr << oss.str();
             exit(FSB_GENERIC_FAILURE);
         }
 
@@ -291,18 +251,18 @@ void show_console_menu() {
                 nullptr, GetLastError(),
                 0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-            std::wstring description(err_buffer ? err_buffer : L"Unknown error");
+            std::string description = utf16_to_utf8(err_buffer ? err_buffer : L"Unknown error.");
             if (err_buffer) LocalFree(err_buffer);
 
-            std::wostringstream oss;
-            oss << L"An error occurred while trying to get the console buffer info.\r\n\r\n" \
-                   L"Location: Line 252, fsb.exe (Main.cpp::show_console_menu)\r\n" \
-                   L"Operation: Kernel32.dll!GetConsoleScreenBufferInfo\r\n" \
-                   L"Return value: false" << L"\r\n" \
-                   L"Error code: 0x" << std::hex << GetLastError() << L"\r\n" \
-                   L"Description: " << description.c_str();
+            std::ostringstream oss;
+            oss << u8"An error occurred while trying to get the console buffer info.\r\n\r\n" \
+                   u8"Location: Line 252, fsb.exe (Main.cpp::show_console_menu)\r\n" \
+                   u8"Operation: Kernel32.dll!GetConsoleScreenBufferInfo\r\n" \
+                   u8"Return value: false" << u8"\r\n" \
+                   u8"Error code: 0x" << std::hex << GetLastError() << u8"\r\n" \
+                   u8"Description: " << description.c_str();
 
-            std::wcerr << oss.str();
+            std::cerr << oss.str();
         }
 
         int width = console_screen_buffer_info.srWindow.Right \
@@ -315,25 +275,25 @@ void show_console_menu() {
         int lines_to_move = (height - 2) - cursor_y;
 
         for (int i = 0; i < lines_to_move; ++i) {
-            std::wcout << L"\r\n";
+            std::cout << u8"\r\n";
         }
 
-        std::wstring row(width, L'=');
+        std::string row(width, '=');
 
-        std::wcout << row << L"\r\n";
-        std::wcout << L"[ Q ]uit [ R ]efresh [ Enter ] Apply";
+        std::cout << row << u8"\r\n";
+        std::cout << "[ Q ]uit [ R ]efresh [ Enter ] Apply";
 
-        wchar_t key = _getwch();
-        if (key == 0x1B || key == L'Q' || key == L'q') {
+        int key = _getch();
+        if (key == 0x1B || key == 'Q' || key == 'q') {
             exit(0);
         }
         // Enter key
-        if (key == L'\r') {
+        if (key == '\r') {
             fullscreen_window(windows[selected_x].window_handle);
             exit(0);
         }
         // R key
-        if (key == L'R' || key == L'r') {
+        if (key == 'R' || key == 'r') {
             windows.clear();
             EnumWindows(EnumWindowsProc, 0);
         }
@@ -350,6 +310,15 @@ void show_console_menu() {
     }
 }
 
+void uninit_console() {
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursor_info;
+
+    GetConsoleCursorInfo(console_handle, &cursor_info);
+    cursor_info.bVisible = true;
+    SetConsoleCursorInfo(console_handle, &cursor_info);
+}
+
 } // namespace fsb
 
 int __stdcall wmain() {
@@ -358,15 +327,16 @@ int __stdcall wmain() {
 
     EnumWindows(fsb::EnumWindowsProc, 0);
     if (fsb::windows.empty()) {
-        std::wostringstream oss;
-        oss << L"You have launched fsb with no foreground windows! " \
-               L"Please relaunch with at least one foreground window.";
-        std::wcerr << oss.str();
+        std::ostringstream oss;
+        oss << u8"You have launched fsb with no foreground windows! " \
+               u8"Please relaunch with at least one foreground window.";
+        std::cerr << oss.str();
         return FSB_NO_FOREGROUND_WINDOWS;
     }
 
     fsb::show_console_menu();
 
+    fsb::uninit_console();
     return 0;
 }
 
