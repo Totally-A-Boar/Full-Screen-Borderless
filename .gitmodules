@@ -1,3 +1,6 @@
 [submodule "third_party/colors"]
 	path = third_party/colors
 	url = https://github.com/hugorplobo/colors.hpp.git
+[submodule "third_party/utfcpp"]
+	path = third_party/utfcpp
+	url = https://github.com/nemtrif/utfcpp.git
