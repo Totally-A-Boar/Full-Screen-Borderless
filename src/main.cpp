@@ -1,16 +1,40 @@
-/*
- *+=======================================================================+*
- * FSB : Full screen borderless                                            *
- *+=======================================================================+*
- * Copyright 2025 Jamie Howell. All rights reserved.                       *
- * Licensed under The MIT License -- see LICENSE in root for more details. *
- *+=======================================================================+*
- */
+//+=================================================================================================
+// Project:     fsb : Full Screen Borderless
+//
+// File:        main.cpp
+//
+// Description: Main entry point for FSB. Contains most logic for program.
+//
+// Comments:    None
+//
+// Version:     2.0.0
+//
+// Classes:     fsb::process_window
+//
+// Functions:   fsb::utf16_to_utf8(std::wstring_view)
+//              fsb::utf8_to_utf16(std::string_view)
+//              fsb::init_console()
+//              fsb::uninit_console()
+//              fsb::EnumWindowsProc(HWND window_handle, LPARAM message_param)
+//              fsb::fullscreen_window(HWND window_handle)
+//              fsb::clear_console()
+//              fsb::show_console_menu()
+//              wmain()
+//
+// Macros:      None
+//
+// Copyright © 2025 Jamie Howell. All rights reserved
+// Licensed under The MIT License. See LICENSE file in project root for full license, or, go to
+// https://opensource.org/license/mit
+//+=================================================================================================
 
+#include "error.h"
 #include <Windows.h>
 #include <conio.h>
 #include <fcntl.h>
 #include <io.h>
+#include <utfcpp/source/utf8.h>
+#include <colors/include/colors/colors.hpp>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -18,25 +42,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <colors/include/colors/colors.hpp>
-#include <utfcpp/source/utf8.h>
 #include "assert.hpp"
-
-// Custom error codes for specific cases
-// No error
-#define FSB_NO_ERROR              0x00000000
-
-// Generic failure fallback
-#define FSB_GENERIC_FAILURE       0xFB000001
-
-// Error initializing the console
-#define FSB_CONSOLE_INIT_FAILURE  0xFB000002
-
-// FSB was launched with no foreground windows
-#define FSB_NO_FOREGROUND_WINDOWS 0xFB000003
-
-// A debug assert call did not evaluate to the correct result
-#define FSB_DEBUG_ASSERT_ERROR    0xFB000004
 
 namespace fsb {
 //! @brief Holds information about a process and its associated window.
@@ -70,7 +76,10 @@ std::vector<process_window> windows;
 std::string utf16_to_utf8(std::wstring_view input) {
     const auto* u16buf = reinterpret_cast<const char16_t*>(input.data());
     std::string output;
-    utf8::utf16to8(u16buf, u16buf + input.size(), std::back_inserter(output));
+    // Cast to void as return value isn't needed
+    (void)utf8::utf16to8(u16buf, u16buf + input.size(),
+        std::back_inserter(output));
+    FSB_ASSERT(!output.empty(), "Non-null string", "Converted strings should never return null");
     return output;
 }
 
@@ -84,7 +93,9 @@ std::string utf16_to_utf8(std::wstring_view input) {
 std::wstring utf8_to_utf16(std::string_view input) {
     const auto* u8buf = reinterpret_cast<const uint8_t*>(input.data());
     std::wstring output;
-    utf8::utf8to16(u8buf, u8buf + input.size(), std::back_inserter(output));
+    // Cast to void as return value isn't needed
+    (void)utf8::utf8to16(u8buf, u8buf + input.size(), std::back_inserter(output));
+    FSB_ASSERT(!output.empty(), "Non-null string", "Converted strings should never return null");
     return output;
 }
 
@@ -397,7 +408,8 @@ int __stdcall wmain() {
     // Set up the console for proper I/O
     fsb::init_console();
 
-    EnumWindows(fsb::EnumWindowsProc, 0);
+    // My EnumWindowsProc never returns false.
+    (void)EnumWindows(fsb::EnumWindowsProc, 0);
     if (fsb::windows.empty()) {
         std::ostringstream oss;
         oss << u8"You have launched fsb with no foreground windows! " \
