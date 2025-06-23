@@ -342,7 +342,7 @@ void show_console_menu() {
         std::cout << u8"[" << colors::blue << u8"R" << colors::reset << u8"] ";
         std::cout << u8"Reset ";
         std::cout << u8"[" << colors::blue << u8"↵" << colors::reset << u8"] ";
-        std::cout << u8"Apply";
+        std::cout << u8"Apply ";
 
         int key = _getch();
         if (key == 0x1B || key == 'Q' || key == 'q') {
