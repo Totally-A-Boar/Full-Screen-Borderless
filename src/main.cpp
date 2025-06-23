@@ -14,13 +14,9 @@
 
 // Custom error codes for specific cases
 #define FSB_NO_ERROR              0x00000000 // No error
-#define FSB_GENERIC_FAILURE       0xFB000001 // Generic failure fallback code
-#define FSB_REGISTRY_INIT_FAILURE 0xFB000002 // Initializing the registry key failed
-#define FSB_REGISTRY_SET_FAILURE  0xFB000003 // Setting a registry value failed
-#define FSB_REGISTRY_GET_FAILURE  0xFB000004 // Getting a registry value failed
-#define FSB_COMCTL_INIT_FAILURE   0xFB000005 // Initializing common controls failed
-#define FSB_CONSOLE_INIT_FAILURE  0xFB000006 // Error initializing the console
-#define FSB_NO_FOREGROUND_WINDOWS 0xFB000007 // FSB was launched with no foreground windows
+#define FSB_GENERIC_FAILURE       0xFB000001 // Generic failure fallback
+#define FSB_CONSOLE_INIT_FAILURE  0xFB000002 // Error initializing the console
+#define FSB_NO_FOREGROUND_WINDOWS 0xFB000003 // FSB was launched with no foreground windows
 
 namespace fsb {
 //! @brief Holds information about a process and its associated window.
@@ -74,9 +70,8 @@ std::wstring utf8_to_utf16(std::string_view input) {
 
 //! @brief Initializes the console for proper UTF-8 I/O.
 //!
-//! This function sets up the standard console streams for UTF-8 output and sets the console in
-//! unbuffered mode to ensure proper handling of Unicode characters from wcout (UTF-16) in the
-//! console output streams.
+//! This function sets up the standard console streams for UTF-8 output to ensure proper handling
+//! of Unicode characters from cout (UTF-8) in the console output streams.
 //!
 //! It also sets the console to the proper code page and sets the title for cleanliness and to look
 //! as proper as possible.
@@ -91,16 +86,55 @@ void init_console() {
     CONSOLE_CURSOR_INFO cursor_info;
 
     (void)GetConsoleCursorInfo(console_handle, &cursor_info);
-    cursor_info.bVisible = false;
+    cursor_info.dwSize = 1;
+    cursor_info.bVisible = FALSE;
     (void)SetConsoleCursorInfo(console_handle, &cursor_info);
 
     // Active code page needs to be set to UTF-8 for proper Unicode output
-    (void)SetConsoleOutputCP(CP_UTF8);
+    if (!SetConsoleOutputCP(CP_UTF8) || !SetConsoleCP(CP_UTF8)) {
+        wchar_t* buffer = nullptr;
+        (void)FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr, GetLastError(),
+            0, reinterpret_cast<wchar_t*>(&buffer), 0, nullptr);
 
+        std::string description = utf16_to_utf8(buffer ? buffer : L"Unknown error.");
+        if (buffer) LocalFree(buffer);
+
+        std::ostringstream oss;
+        oss << u8"An error occurred while trying to set the code page for the console.\r\n\r\n" \
+               u8"Location: Line 100, fsb.exe (Main.cpp::init_console)\r\n" \
+               u8"Operation: Kernel32.dll!SetConsoleOutputCP\r\n" \
+               u8"Return value: false" << u8"\r\n" \
+               u8"Error code: " << GetLastError() << u8"\r\n" \
+               u8"Description: " << description.c_str();
+
+        std::cerr << oss.str();
+        exit(FSB_CONSOLE_INIT_FAILURE);
+    }
+
+    // Set the console mode to text
+    (void)_setmode(_fileno(stdout), _O_TEXT);
+    (void)_setmode(_fileno(stderr), _O_TEXT);
+    (void)_setmode(_fileno(stdin), _O_TEXT);
 
     // Set the title and cast to void because it shouldn't fail unless there are memory issues
     // which would probably crash the app or the OS entirely.
     (void)SetConsoleTitleW(L"Full Screen Borderless");
+}
+
+//! @brief Resets the cursor for the console.
+//!
+//! This function restores the visibility of the cursor for the console.
+void uninit_console() {
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursor_info;
+
+    GetConsoleCursorInfo(console_handle, &cursor_info);
+    cursor_info.dwSize = 25;
+    cursor_info.bVisible = true;
+    SetConsoleCursorInfo(console_handle, &cursor_info);
 }
 
 //! @brief Callback function used with EnumWindows to collect all windows currently running on the
@@ -149,7 +183,7 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     // Ditto
     wchar_t buffer[256];
     if (GetWindowTextW(window_handle, buffer, std::size(buffer)) == 0) {
-        if (GetLastError() != 0) {
+        if (GetLastError() != 0 || GetLastError() == ERROR_SEM_NOT_FOUND) {
             wchar_t* err_buffer = nullptr; // It allocates the buffer so make it a pointer
             (void)FormatMessageW(
                 FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
@@ -198,11 +232,33 @@ void fullscreen_window(HWND window_handle) {
         SWP_FRAMECHANGED);
 }
 
+//! @brief Clears the console screen using ANSI escape codes.
+//!
+//! This function enables virtual terminal processing (ANSI escape codes) on Windows consoles
+//! and then clears the screen and moves the cursor to the top-left corner using ANSI codes.
+//! On platforms that already support ANSI codes (such as Linux or macOS terminals), no extra
+//! setup is performed. This function avoids using the Windows Console API for clearing.
+//!
+//! @note On Windows, this function enables ANSI escape code support if it is not already enabled.
+void clear_console() {
+    // Enable ANSI escape codes because Windows consoles don't interpret them by default
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    if (console_handle != INVALID_HANDLE_VALUE && GetConsoleMode(console_handle, &mode)) {
+        // Only set the flag if it isn't set
+        if (!(mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+            SetConsoleMode(console_handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        }
+    }
+
+    std::cout << u8"\033c[2J\033[1;1H";
+}
+
 void show_console_menu() {
     int selected_x = 0;
 
     while (true) {
-        std::cout << u8"\033[2J\033[H"; // Clear the screen
+        clear_console();
         std::cout << u8"Select a process to fullscreen:\r\n\r\n";
 
         for (size_t i = 0; i < windows.size(); ++i) {
@@ -281,7 +337,12 @@ void show_console_menu() {
         std::string row(width, '=');
 
         std::cout << row << u8"\r\n";
-        std::cout << "[ Q ]uit [ R ]efresh [ Enter ] Apply";
+        std::cout << u8"[" << colors::blue << u8"Q" << colors::reset << u8"] ";
+        std::cout << u8"Quit ";
+        std::cout << u8"[" << colors::blue << u8"R" << colors::reset << u8"] ";
+        std::cout << u8"Reset ";
+        std::cout << u8"[" << colors::blue << u8"↵" << colors::reset << u8"] ";
+        std::cout << u8"Apply";
 
         int key = _getch();
         if (key == 0x1B || key == 'Q' || key == 'q') {
@@ -308,15 +369,6 @@ void show_console_menu() {
             else selected_x = 0;
         }
     }
-}
-
-void uninit_console() {
-    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_CURSOR_INFO cursor_info;
-
-    GetConsoleCursorInfo(console_handle, &cursor_info);
-    cursor_info.bVisible = true;
-    SetConsoleCursorInfo(console_handle, &cursor_info);
 }
 
 } // namespace fsb

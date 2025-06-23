@@ -38,6 +38,7 @@ if (MSVC)
                 /JMC                # Just My Code debugging
                 /permissive-        # C++ STL conforming code
                 /Zc:wchar_t         # Treat wchar_t as a native type
+                /utf-8              # Fix UTF-8 output error; char type strings interpreted as Windows-1252
                 /GS                 # Buffer security checks
                 /W4                 # Warning level 4
                 /ZI                 # Debug information format
@@ -93,6 +94,7 @@ if (MSVC)
                 /GL                 # Whole program optimization
                 /Gy                 # Function level linking
                 /Zc:wchar_t
+                /utf-8
                 /GS
                 /Gw                 # Optimize global variable access
                 /Zc:inline
