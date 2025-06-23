@@ -1,3 +1,12 @@
+/*
+ *+=======================================================================+*
+ * FSB : Full screen borderless                                            *
+ *+=======================================================================+*
+ * Copyright 2025 Jamie Howell. All rights reserved.                       *
+ * Licensed under The MIT License -- see LICENSE in root for more details. *
+ *+=======================================================================+*
+ */
+
 #include <Windows.h>
 #include <conio.h>
 #include <fcntl.h>
@@ -11,12 +20,23 @@
 #include <vector>
 #include <colors/include/colors/colors.hpp>
 #include <utfcpp/source/utf8.h>
+#include "assert.hpp"
 
 // Custom error codes for specific cases
-#define FSB_NO_ERROR              0x00000000 // No error
-#define FSB_GENERIC_FAILURE       0xFB000001 // Generic failure fallback
-#define FSB_CONSOLE_INIT_FAILURE  0xFB000002 // Error initializing the console
-#define FSB_NO_FOREGROUND_WINDOWS 0xFB000003 // FSB was launched with no foreground windows
+// No error
+#define FSB_NO_ERROR              0x00000000
+
+// Generic failure fallback
+#define FSB_GENERIC_FAILURE       0xFB000001
+
+// Error initializing the console
+#define FSB_CONSOLE_INIT_FAILURE  0xFB000002
+
+// FSB was launched with no foreground windows
+#define FSB_NO_FOREGROUND_WINDOWS 0xFB000003
+
+// A debug assert call did not evaluate to the correct result
+#define FSB_DEBUG_ASSERT_ERROR    0xFB000004
 
 namespace fsb {
 //! @brief Holds information about a process and its associated window.
