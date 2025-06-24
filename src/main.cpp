@@ -9,7 +9,7 @@
 //
 // Version:     2.0.0
 //
-// Classes:     fsb::process_window
+// Classes:     fsb::process_data
 //
 // Functions:   fsb::init_console()
 //              fsb::uninit_console()
@@ -26,40 +26,25 @@
 // https://opensource.org/license/mit
 //+=================================================================================================
 
-#include "error.h"
 #include <Windows.h>
 #include <conio.h>
 #include <fcntl.h>
 #include <io.h>
 #include <colors/include/colors/colors.hpp>
-#include <cstdint>
 #include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
+#include "base_types.hpp"
+#include "console.hpp"
+#include "error.hpp"
 #include "string.hpp"
 
 namespace fsb {
-//! @brief Holds information about a process and its associated window.
-//!
-//! This structure is the main structure used within the application to manage the window's full
-//! screen properties, and the window's title and process ID for display to the user
-struct process_window {
-    //! The process ID associated with the window/application
-    uint32_t process_id;
-
-    //! Handle to the window. This is the actual property used by the application to apply the
-    //! full-screen property
-    HWND window_handle;
-
-    //! Title of the window to display in the interface
-    std::string title;
-};
-
 // Global variable(s)
 //! Vector of all foreground windows. Contains display data and window handle to full screen it.
-std::vector<process_window> windows;
+std::vector<process_data> windows;
 
 // Functions
 //! @brief Initializes the console for proper UTF-8 I/O.
@@ -135,7 +120,7 @@ void uninit_console() {
 //! system
 //!
 //! This function is called by the Windows API for and contains custom logic to loop through all
-//! windows and add it to the vector for the process_window struct if it is visible.
+//! windows and add it to the vector for the process_data struct if it is visible.
 //!
 //! @param window_handle Handle to the current window that is being looped through. Is used to
 //! obtain the title, process ID, and saves the handle itself

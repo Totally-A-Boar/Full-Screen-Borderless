@@ -8,7 +8,10 @@ project(
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(fsb src/main.cpp)
+add_executable(fsb
+        src/main.cpp
+        src/console.cpp
+)
 
 if (!WIN32)
     message(FATAL_ERROR "fsb is not supported on non-Windows platforms!")
