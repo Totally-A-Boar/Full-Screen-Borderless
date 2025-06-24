@@ -11,9 +11,7 @@
 //
 // Classes:     fsb::process_window
 //
-// Functions:   fsb::utf16_to_utf8(std::wstring_view)
-//              fsb::utf8_to_utf16(std::string_view)
-//              fsb::init_console()
+// Functions:   fsb::init_console()
 //              fsb::uninit_console()
 //              fsb::EnumWindowsProc(HWND window_handle, LPARAM message_param)
 //              fsb::fullscreen_window(HWND window_handle)
@@ -33,16 +31,14 @@
 #include <conio.h>
 #include <fcntl.h>
 #include <io.h>
-#include <utfcpp/source/utf8.h>
 #include <colors/include/colors/colors.hpp>
 #include <cstdint>
 #include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
-#include <string_view>
 #include <vector>
-#include "assert.hpp"
+#include "string.hpp"
 
 namespace fsb {
 //! @brief Holds information about a process and its associated window.
@@ -66,39 +62,6 @@ struct process_window {
 std::vector<process_window> windows;
 
 // Functions
-//! @brief Converts a UTF-16 string (std::wstring) to a UTF-8 string (std::string).
-//!
-//! This function takes an std::wstring_view (UTF-16), and using the utfcpp library, converts it to
-//! an std::string (UTF-8) type.
-//!
-//! @param input The wide string input to be converted.
-//! @returns Returns the UTF-8 output of the inputted UTF-16 string.
-std::string utf16_to_utf8(std::wstring_view input) {
-    const auto* u16buf = reinterpret_cast<const char16_t*>(input.data());
-    std::string output;
-    // Cast to void as return value isn't needed
-    (void)utf8::utf16to8(u16buf, u16buf + input.size(),
-        std::back_inserter(output));
-    FSB_ASSERT(!output.empty(), "Non-null string", "Converted strings should never return null");
-    return output;
-}
-
-//! @brief Converts a UTF-8 string (std::string) to a UTF-16 string (std::wstring).
-//!
-//! This function takes an std::string_view (UTF-8), and using the utfcpp library, converts it to
-//! an std::wstring (UTF-16) type.
-//!
-//! @param input The wide string input to be converted.
-//! @returns Returns the UTF-8 output of the inputted UTF-16 string.
-std::wstring utf8_to_utf16(std::string_view input) {
-    const auto* u8buf = reinterpret_cast<const uint8_t*>(input.data());
-    std::wstring output;
-    // Cast to void as return value isn't needed
-    (void)utf8::utf8to16(u8buf, u8buf + input.size(), std::back_inserter(output));
-    FSB_ASSERT(!output.empty(), "Non-null string", "Converted strings should never return null");
-    return output;
-}
-
 //! @brief Initializes the console for proper UTF-8 I/O.
 //!
 //! This function sets up the standard console streams for UTF-8 output to ensure proper handling
@@ -214,8 +177,10 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     // Ditto
     wchar_t buffer[256];
     if (GetWindowTextW(window_handle, buffer, std::size(buffer)) == 0) {
+        // Check if the error is 0, which means no title may be available, or the system semaphore
+        // is not found, which means that there is no WM_GETTEXT support on the window.
         if (GetLastError() != 0 || GetLastError() == ERROR_SEM_NOT_FOUND) {
-            wchar_t* err_buffer = nullptr; // It allocates the buffer so make it a pointer
+            wchar_t* err_buffer = nullptr;
             (void)FormatMessageW(
                 FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
                 FORMAT_MESSAGE_IGNORE_INSERTS,
