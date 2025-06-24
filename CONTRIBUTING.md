@@ -14,7 +14,7 @@ As a base set of rules:
 - Sort include by order of importance (for example `Windows.h` comes before `WinSock2.h`)
 
 Files should also have a header that resembles the following at the top. This header states the project name, file name, a description of the file, any comments from authors, file version (after being in a release build), classes/structs declared or exported in the file, functions declared, exported, or implemented in the file, any macros declared or exported in the file, and, a copyright/legal notice.
-```cpp
+```
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
