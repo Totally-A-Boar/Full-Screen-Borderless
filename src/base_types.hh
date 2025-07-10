@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        base_types.hpp
+// File:        base_types.hh
 //
 // Description: Contains base types used by the program
 //
@@ -29,6 +29,42 @@
 #include <Windows.h>
 
 namespace fsb {
+//! @brief Basic 2 integer vector for 2d sizes.
+struct size_vec2 {
+    uint32_t x;
+    uint32_t y;
+};
+
+struct window_metrics {
+    size_vec2 position;
+
+    size_vec2 size;
+
+    std::string font_name;
+
+    uint32_t font_size;
+
+    //! @note DWORD type stored as uint32_t. Should always cast to DWORD when using or cast to
+    //! uint32_t when storing.
+    uint32_t style;
+
+    uint32_t ex_style;
+};
+
+enum class window_state {
+    NORMAL,
+    MAXIMIZED,
+    MINIMIZED
+};
+
+struct window_attributes {
+    bool is_visible;
+
+    bool is_enabled;
+
+    window_state state;
+};
+
 //! @brief Holds information about a process and its associated window.
 //!
 //! This structure is the main structure used within the application to manage the window's full
@@ -43,13 +79,18 @@ struct process_data {
 
     //! Title of the window to display in the interface
     std::string title;
+
+    std::string class_name;
+
+    std::string file_name;
+
+    window_attributes attributes;
+
+    window_metrics metrics;
 };
 
-//! @brief Basic 2 integer vector for 2d sizes.
-struct size_vec2 {
-    uint32_t width;
-    uint32_t height;
-};
+
+
 }
 
 #endif

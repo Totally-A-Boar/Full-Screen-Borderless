@@ -19,6 +19,7 @@ then
 fi
 
 # Format the files
-clang-format -i src/main.cpp
+clang-format -i src/*.cc
+clang-format -i src/*.hh
 
 echo "Formatting has completed."

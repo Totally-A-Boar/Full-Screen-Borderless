@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        assert.hpp
+// File:        assert.hh
 //
 // Description: Contains custom assert macro and function for detailed error reporting and crash
 //              dumping.

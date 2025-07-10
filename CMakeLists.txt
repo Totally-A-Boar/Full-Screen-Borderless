@@ -9,8 +9,8 @@ project(
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(fsb
-        src/main.cpp
-        src/console.cpp
+        src/main.cc
+        src/console.cc
 )
 
 if (!WIN32)

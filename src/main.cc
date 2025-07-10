@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        main.cpp
+// File:        main.cc
 //
 // Description: Main entry point for FSB. Contains most logic for program.
 //
@@ -36,10 +36,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "base_types.hpp"
-#include "console.hpp"
-#include "error.hpp"
-#include "string.hpp"
+#include "base_types.hh"
+#include "console.hh"
+#include "error.hh"
+#include "string.hh"
 
 namespace fsb {
 // Global variable(s)
