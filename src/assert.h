@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        assert.hh
+// File:        assert.h
 //
 // Description: Contains custom assert macro and function for detailed error reporting and crash
 //              dumping.
@@ -12,7 +12,7 @@
 //
 // Classes:     None
 //
-// Functions:   fsb::fsb_assert(bool expr, std::string_view expr_str, std::string_view expr_name,
+// Functions:   fsb::FsbAssert(bool expr, std::string_view expr_str, std::string_view expr_name,
 //                              std::string_view description, std::string_view file, int line,
 //                              std::string_view function_name)
 //
@@ -55,7 +55,7 @@ namespace fsb {
 //! macro.
 //!
 //! @warning This function should not be called directly, please use FSB_ASSERT.
-inline void fsb_assert(bool expr, std::string_view expr_str, std::string_view expr_name,
+inline void FsbAssert(bool expr, std::string_view expr_str, std::string_view expr_name,
     std::string_view description, std::string_view file, int line, std::string_view function_name) {
     if (!expr) {
         std::cerr << u8"Assertion '" << expr_name << "' failed!\n" \
@@ -83,6 +83,6 @@ inline void fsb_assert(bool expr, std::string_view expr_str, std::string_view ex
 //! @param description A description of the expression passed. Example:
 //! "Checks to be absolutely certain that 2+2 is equal to 4."
 #define FSB_ASSERT(expr, name, description) \
-    fsb::fsb_assert((expr), #expr, name, description, __FILE__, __LINE__, __func__)
+    fsb::FsbAssert((expr), #expr, name, description, __FILE__, __LINE__, __func__)
 
 #endif

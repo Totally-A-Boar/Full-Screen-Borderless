@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        error.hh
+// File:        error.h
 //
 // Description: Contains the constants/macros used by the application for error code returns
 //
@@ -28,11 +28,11 @@
 #ifndef FSB_ERROR_HPP_
 #define FSB_ERROR_HPP_
 
+#include "error.h"
+#include "string.h"
 #include <Windows.h>
 #include <sstream>
 #include <string>
-#include "error.hh"
-#include "string.hh"
 
 // No error
 #define FSB_NO_ERROR              0x00000000
@@ -51,6 +51,9 @@
 
 // A call in the console (Console::~Console) destructor failed
 #define FSB_CONSOLE_UNINIT_FAILURE 0xFB000005
+
+// A null argument was passed to a function expecting a non-null value
+#define FSB_NULL_ARGUMENT          0xFB000006
 
 namespace fsb {
 inline void win32_error(std::string_view action_description, int line,

@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        string.hh
+// File:        string.h
 //
 // Description: Contains helper functions for converting UTF-16 to UTF-8 and vice versa
 //
@@ -24,9 +24,9 @@
 #ifndef FSB_STRING_HPP_
 #define FSB_STRING_HPP_
 
+#include "assert.h"
 #include <utfcpp/source/utf8.h>
 #include <string_view>
-#include "assert.hh"
 
 namespace fsb {
 //! @brief Converts a UTF-16 string (std::wstring) to a UTF-8 string (std::string).

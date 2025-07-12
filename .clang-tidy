@@ -10,49 +10,55 @@ Checks: >
   -modernize-use-trailing-return-type
 
 CheckOptions:
-  # Naming rules
-  # I prefer snake_case for modern C++, when not following Win32 style code.
   - key: readability-identifier-naming.NamespaceCase
     value: lower_case
 
   - key: readability-identifier-naming.ClassCase
-    value: CamelCase
+    value: PascalCase
 
   - key: readability-identifier-naming.StructCase
-    value: lower_case
+    value: PascalCase
 
   - key: readability-identifier-naming.EnumCase
-    value: lower_case
+    value: PascalCase
 
   - key: readability-identifier-naming.FunctionCase
-    value: lower_case
+    value: PascalCase
 
   - key: readability-identifier-naming.VariableCase
-    value: lower_case
+    value: camelBack
 
   - key: readability-identifier-naming.GlobalVariableCase
-    value: lower_case
+    value: camelBack
+  - key: readability-identifier-naming.GlobalVariablePrefix
+    value: g_
 
   - key: readability-identifier-naming.MemberCase
-    value: lower_case
+    value: camelBack
+  - key: readability-identifier-naming.MemberSuffix
+    value: _
 
   - key: readability-identifier-naming.ClassMemberCase
-    value: lower_case
+    value: camelBack
+  - key: readability-identifier-naming.ClassMemberSuffix
+    value: _
 
   - key: readability-identifier-naming.ConstantCase
-    value: UPPER_CASE
+    value: PascalCase
+  - key: readability-identifier-naming.ConstantPrefix
+    value: k
 
   - key: readability-identifier-naming.ParameterCase
-    value: lower_case
+    value: camelBack
 
   - key: readability-identifier-naming.LocalVariableCase
-    value: lower_case
+    value: camelBack
 
   - key: readability-identifier-naming.MacroDefinitionCase
     value: UPPER_CASE
 
   - key: readability-identifier-naming.TemplateParameterCase
-    value: CamelCase
+    value: PascalCase
 
 WarningsAsErrors: ''
 

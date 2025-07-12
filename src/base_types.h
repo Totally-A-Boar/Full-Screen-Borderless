@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        base_types.hh
+// File:        base_types.h
 //
 // Description: Contains base types used by the program
 //
@@ -30,15 +30,15 @@
 
 namespace fsb {
 //! @brief Basic 2 integer vector for 2d sizes.
-struct size_vec2 {
+struct SizeVec2 {
     uint32_t x;
     uint32_t y;
 };
 
-struct window_metrics {
-    size_vec2 position;
+struct WindowMetrics {
+    SizeVec2 position;
 
-    size_vec2 size;
+    SizeVec2 size;
 
     std::string font_name;
 
@@ -51,42 +51,42 @@ struct window_metrics {
     uint32_t ex_style;
 };
 
-enum class window_state {
-    NORMAL,
-    MAXIMIZED,
-    MINIMIZED
+enum class WindowState {
+    Normal,
+    Maximized,
+    Minimized
 };
 
-struct window_attributes {
-    bool is_visible;
+struct WindowAttributes {
+    bool isVisible;
 
-    bool is_enabled;
+    bool isEnabled;
 
-    window_state state;
+    WindowState state;
 };
 
 //! @brief Holds information about a process and its associated window.
 //!
 //! This structure is the main structure used within the application to manage the window's full
 //! screen properties, and the window's title and process ID for display to the user
-struct process_data {
+struct ProcessData {
     //! Handle to the window. This is the actual property used by the application to apply the
     //! full-screen property
-    HWND window_handle;
+    HWND windowHandle;
 
     //! The process ID associated with the window/application
-    uint32_t process_id;
+    uint32_t processId;
 
     //! Title of the window to display in the interface
     std::string title;
 
-    std::string class_name;
+    std::string className;
 
-    std::string file_name;
+    std::string fileName;
 
-    window_attributes attributes;
+    WindowAttributes attributes;
 
-    window_metrics metrics;
+    WindowMetrics metrics;
 };
 
 

@@ -26,6 +26,10 @@
 // https://opensource.org/license/mit
 //+=================================================================================================
 
+#include "base_types.h"
+#include "console.h"
+#include "error.h"
+#include "string.h"
 #include <Windows.h>
 #include <conio.h>
 #include <fcntl.h>
@@ -36,10 +40,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "base_types.hh"
-#include "console.hh"
-#include "error.hh"
-#include "string.hh"
 
 namespace fsb {
 // Global variable(s)
@@ -367,6 +367,8 @@ int __stdcall wmain() {
         std::cerr << oss.str();
         return FSB_NO_FOREGROUND_WINDOWS;
     }
+
+    fsb::Console console;
 
     fsb::show_console_menu();
 

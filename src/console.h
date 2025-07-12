@@ -1,7 +1,7 @@
 //+=================================================================================================
 // Project:     fsb : Full Screen Borderless
 //
-// File:        console.hh
+// File:        console.h
 //
 // Description: Contains the logic and functions for the TUI system
 //
@@ -9,7 +9,7 @@
 //
 // Version:     1.0.0
 //
-// Classes:     fsb::console
+// Classes:     fsb::Console
 //
 // Functions:
 //
@@ -23,11 +23,11 @@
 #ifndef FSB_CONSOLE_HPP_
 #define FSB_CONSOLE_HPP_
 
+#include "base_types.h"
 #include <Windows.h>
 #include <conio.h>
 #include <string_view>
 #include <vector>
-#include "base_types.hh"
 
 namespace fsb {
 class Console {
@@ -35,10 +35,10 @@ public:
     Console();
     ~Console();
 private:
-    void clear_console();
-    bool set_window_information(HWND window_handle);
-    int enum_windows_procedure(HWND window_handle, LPARAM message_param);
-    std::vector<process_data> windows_;
+    bool GetWindowAttributes(HWND windowHandle, WindowAttributes* windowAttributes);
+    void ClearConsole();
+    int EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam);
+    std::vector<ProcessData> windows_;
 };
 }
 
