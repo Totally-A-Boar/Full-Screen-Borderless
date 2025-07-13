@@ -1,35 +1,11 @@
-//+=================================================================================================
-// Project:     fsb : Full Screen Borderless
-//
-// File:        main.cc
-//
-// Description: Main entry point for FSB. Contains most logic for program.
-//
-// Comments:    None
-//
-// Version:     2.0.0
-//
-// Classes:     fsb::process_data
-//
-// Functions:   fsb::init_console()
-//              fsb::uninit_console()
-//              fsb::EnumWindowsProc(HWND window_handle, LPARAM message_param)
-//              fsb::fullscreen_window(HWND window_handle)
-//              fsb::clear_console()
-//              fsb::show_console_menu()
-//              wmain()
-//
-// Macros:      None
-//
-// Copyright © 2025 Jamie Howell. All rights reserved
-// Licensed under The MIT License. See LICENSE file in project root for full license, or, go to
-// https://opensource.org/license/mit
-//+=================================================================================================
+// Copyright 2025 Jamie Howell
+// Use of this source code is governed by an MIT license that can be
+// found in the LICENSE file.
 
 #include "base_types.h"
 #include "console.h"
 #include "error.h"
-#include "string.h"
+#include "fsb_string.h"
 #include <Windows.h>
 #include <conio.h>
 #include <fcntl.h>

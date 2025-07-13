@@ -1,56 +1,7 @@
 BasedOnStyle: Chromium
 
-# Indentation and spacing
-IndentWidth: 4
-UseTab: Never
-TabWidth: 4
-
-# Bracing style: K&R (braces on the same line)
-BraceWrapping:
-  AfterClass: false
-  AfterControlStatement: false
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterStruct: false
-  AfterUnion: false
-  BeforeCatch: false
-  BeforeElse: false
-  IndentBraces: false
-
-# Column limit for line wrapping
+# Customizations:
 ColumnLimit: 100
-
-# Readability improvements
-AllowShortIfStatementsOnASingleLine: false
-AllowShortLoopsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: Inline
-BreakBeforeBraces: Attach
-AlwaysBreakTemplateDeclarations: Yes
-SpacesInParentheses: false
-SpaceBeforeParens: ControlStatements
-SpaceAfterCStyleCast: true
-SpaceBeforeAssignmentOperators: true
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
-AlignTrailingComments: true
-
-# Pointer and reference style
-DerivePointerAlignment: false
-PointerAlignment: Left
-
-# Trailing commas in multi-line containers
-Cpp11BracedListStyle: true
-
-# Include sorting
-IncludeBlocks: Preserve
-SortIncludes: true
-IncludeCategories:
-  - Regex:           '^<.*\.h>'
-    Priority:        1
-    SortPriority:    0
-    CaseSensitive:   false
-  - Regex:           '^".*\.h"'
-    Priority:        2
-    SortPriority:    1
-    CaseSensitive:   false
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never

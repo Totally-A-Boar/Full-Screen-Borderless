@@ -1,24 +1,6 @@
-//+=================================================================================================
-// Project:     fsb : Full Screen Borderless
-//
-// File:        console.h
-//
-// Description: Contains the logic and functions for the TUI system
-//
-// Comments:    None
-//
-// Version:     1.0.0
-//
-// Classes:     fsb::Console
-//
-// Functions:
-//
-// Macros:      None
-//
-// Copyright © 2025 Jamie Howell. All rights reserved
-// Licensed under The MIT License. See LICENSE file in project root for full license, or, go to
-// https://opensource.org/license/mit
-//+=================================================================================================
+// Copyright 2025 Jamie Howell
+// Use of this source code is governed by an MIT license that can be
+// found in the LICENSE file.
 
 #ifndef FSB_CONSOLE_HPP_
 #define FSB_CONSOLE_HPP_

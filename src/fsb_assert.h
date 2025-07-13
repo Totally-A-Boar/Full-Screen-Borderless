@@ -1,27 +1,6 @@
-//+=================================================================================================
-// Project:     fsb : Full Screen Borderless
-//
-// File:        assert.h
-//
-// Description: Contains custom assert macro and function for detailed error reporting and crash
-//              dumping.
-//
-// Comments:    None
-//
-// Version:     1.0.0
-//
-// Classes:     None
-//
-// Functions:   fsb::FsbAssert(bool expr, std::string_view expr_str, std::string_view expr_name,
-//                              std::string_view description, std::string_view file, int line,
-//                              std::string_view function_name)
-//
-// Macros:      FSB_ASSERT(expr, name, description)
-//
-// Copyright © 2025 Jamie Howell. All rights reserved
-// Licensed under The MIT License. See LICENSE file in project root for full license, or, go to
-// https://opensource.org/license/mit
-//+=================================================================================================
+// Copyright 2025 Jamie Howell
+// Use of this source code is governed by an MIT license that can be
+// found in the LICENSE file.
 
 #ifndef FSB_ASSERT_HPP_
 #define FSB_ASSERT_HPP_
@@ -56,13 +35,14 @@ namespace fsb {
 //!
 //! @warning This function should not be called directly, please use FSB_ASSERT.
 inline void FsbAssert(bool expr, std::string_view expr_str, std::string_view expr_name,
-    std::string_view description, std::string_view file, int line, std::string_view function_name) {
+    std::string_view description, std::string_view file, int32_t line,
+    std::string_view function_name) {
     if (!expr) {
-        std::cerr << u8"Assertion '" << expr_name << "' failed!\n" \
-                  << u8"Expression: " << expr_str << "\n" \
-                  << u8"Description: " << description << "\n" \
-                  << u8"Location: line " << line << u8", " << file << u8":" << function_name \
-                  << u8"\n";
+        std::cerr << "Assertion '" << expr_name << "' failed!\n" \
+                  << "Expression: " << expr_str << "\n" \
+                  << "Description: " << description << "\n" \
+                  << "Location: line " << line << ", " << file << ":" << function_name \
+                  << "\n";
         std::abort();
     }
 }

@@ -1,28 +1,12 @@
-//+=================================================================================================
-// Project:     fsb : Full Screen Borderless
-//
-// File:        console.cc
-//
-// Description: Contains the implementation of the logic and functions for the TUI system
-//
-// Comments:    None
-//
-// Version:     1.0.0
-//
-// Classes:     fsb::Console
-//
-// Functions:
-//
-// Macros:      None
-//
-// Copyright © 2025 Jamie Howell. All rights reserved
-// Licensed under The MIT License. See LICENSE file in project root for full license, or, go to
-// https://opensource.org/license/mit
-//+=================================================================================================
+// Copyright 2025 Jamie Howell
+// Use of this source code is governed by an MIT license that can be
+// found in the LICENSE file.
 
 #include "console.h"
+
 #include "error.h"
-#include "string.h" // Local string.h, not STL string.h
+#include "fsb_string.h"
+
 #include <fcntl.h>
 #include <io.h>
 #include <sstream>
@@ -30,37 +14,41 @@
 
 namespace fsb {
 Console::Console() {
-    // Initialize the console
-    // Hide the blinking cursor
     HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (consoleHandle == INVALID_HANDLE_VALUE) {
-        // Exit the application right after
-        WIN32_ERROR("setup the console for correct I/O.", "fsb::Console::Console",
-            "Kernel32.dll!GetStdHandle", -1);
+        constexpr std::string_view kActionDesc = "setup the console for UTF-8 I/O.";
+        constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
+        constexpr std::string_view kFailingFunction = "Kernel32.dll!GetStdHandle";
+        constexpr int32_t kReturnValue = -1;
+        WIN32_ERROR(kActionDesc, kQualifiedName, kFailingFunction, kReturnValue);
         std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
-    CONSOLE_CURSOR_INFO consoleCursorInfo;
-    (void)GetConsoleCursorInfo(consoleHandle, &consoleCursorInfo);
-    consoleCursorInfo.bVisible = false;
-    (void)SetConsoleCursorInfo(consoleHandle, &consoleCursorInfo);
+    CONSOLE_CURSOR_INFO info;
+    static_cast<void>(GetConsoleCursorInfo(consoleHandle, &info));
+    info.bVisible = false;
+    static_cast<void>(SetConsoleCursorInfo(consoleHandle, &info));
 
     // Active code page needs to be set to UTF-8 for proper Unicode output
     if (!SetConsoleOutputCP(CP_UTF8) || !SetConsoleCP(CP_UTF8)) {
-        WIN32_ERROR("set the console output code page.", "fsb::Console::Console",
-            "Kernel32.dll!SetConsoleOutputCP", 0);
+        constexpr std::string_view kActionDesc = "setup the console active code page.";
+        constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
+        constexpr std::string_view kFailingFunction = "Kernel32.dll!SetConsoleOutputCP";
+        constexpr int32_t kReturnValue = 0;
+        WIN32_ERROR(kActionDesc, kQualifiedName, kFailingFunction, kReturnValue);
         std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
 
-    // Set the console mode to text
-    // _setmode returns the previous translation mode of the console, which we do not need, so cast
-    // to void.
-    (void)_setmode(_fileno(stdout), _O_TEXT);
-    (void)_setmode(_fileno(stderr), _O_TEXT);
-    (void)_setmode(_fileno(stdin), _O_TEXT);
+    // Note: _O_TEXT and _O_U8TEXT, while fundamentally the same and have the same value serve two
+    // different functions and greatly impact the console output.
+    // The C Runtime will differentiate between the two internally.
+    // _O_U8TEXT translates UTF-16 (wcout) output to UTF-8, however, this will mangle UTF-8 output
+    // and result in mojibake output.
+    // Return value is ignored because _setmode returns the previous translation mode of the file.
+    static_cast<void>(_setmode(_fileno(stdout), _O_TEXT));
+    static_cast<void>(_setmode(_fileno(stderr), _O_TEXT));
+    static_cast<void>(_setmode(_fileno(stdin), _O_TEXT));
 
-    // Set the title and cast to void because it shouldn't fail unless there are memory issues
-    // which would probably crash the app or the OS entirely.
-    (void)SetConsoleTitleW(L"Full Screen Borderless");
+    static_cast<void>(SetConsoleTitleW(L"Full Screen Borderless"));
 }
 
 Console::~Console() {
@@ -114,7 +102,9 @@ bool Console::GetWindowAttributes(HWND windowHandle, WindowAttributes* windowAtt
                 break;
             case SW_SHOWNORMAL:
             case SW_RESTORE:
-                windowState = WindowState::Normal;;
+                windowState = WindowState::Normal;
+            default:
+                windowState = WindowState::Normal;
         }
     } else {
         return false;
@@ -134,6 +124,12 @@ bool Console::GetWindowMetrics(HWND windowHandle, WindowMetrics* windowMetrics) 
     }
 
     SizeVec2 windowPosition = {};
+    RECT windowRect;
+    if (!GetWindowRect(windowHandle, &windowRect)) {
+        // To-do: log error
+    }
+
+    // To-do: finish implementing
 
     return true;
 }
@@ -157,7 +153,7 @@ void Console::ClearConsole() {
         }
     }
 
-    std::cout << u8"\033c[2J\033[1;1H";
+    std::cout << "\033c[2J\033[1;1H";
 }
 
 int Console::EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam) {
@@ -246,4 +242,4 @@ int Console::EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam) {
     return 0;
 }
 
-}
+} // namespace fsb

@@ -1,35 +1,12 @@
-//+=================================================================================================
-// Project:     fsb : Full Screen Borderless
-//
-// File:        error.h
-//
-// Description: Contains the constants/macros used by the application for error code returns
-//
-// Comments:    This file doesn't contain very many error codes yet, but will expand with the
-//              project.
-//
-// Version:     1.0.0
-//
-// Classes:     None
-//
-// Functions:   fsb::
-//
-// Macros:      FSB_NO_ERROR              (decimal: 0)
-//              FSB_GENERIC_FAILURE       (decimal signed: 4209068033, unsigned: -858998263)
-//              FSB_CONSOLE_INIT_FAILURE  (decimal signed: 4209068034, unsigned: -858998262)
-//              FSB_NO_FOREGROUND_WINDOWS (decimal signed: 4209068035, unsigned: -858998261)
-//              FSB_DEBUG_ASSERT_ERROR    (decimal signed: 4209068036, unsigned: -858998260)
-//
-// Copyright © 2025 Jamie Howell. All rights reserved
-// Licensed under The MIT License. See LICENSE file in project root for full license, or, go to
-// https://opensource.org/license/mit
-//+=================================================================================================
+// Copyright 2025 Jamie Howell
+// Use of this source code is governed by an MIT license that can be
+// found in the LICENSE file.
 
 #ifndef FSB_ERROR_HPP_
 #define FSB_ERROR_HPP_
 
 #include "error.h"
-#include "string.h"
+#include "fsb_string.h"
 #include <Windows.h>
 #include <sstream>
 #include <string>
@@ -70,12 +47,12 @@ inline void Win32Error(std::string_view actionDescription, int line,
     if (buffer) LocalFree(buffer);
 
     std::ostringstream oss;
-    oss << u8"An error occurred while trying to " << actionDescription << "\r\n\r\n" \
-           u8"Location: Line " << line << "fsb.exe (" << qualifiedName << ")\r\n" \
-           u8"Operation: " << exportedOperationName << "\r\n" \
-           u8"Return value: "<< returnCode << u8"\r\n" \
-           u8"Error code: " << GetLastError() << u8"\r\n" \
-           u8"Description: " << description.c_str();
+    oss << "An error occurred while trying to " << actionDescription << "\r\n\r\n" \
+           "Location: Line " << line << "fsb.exe (" << qualifiedName << ")\r\n" \
+           "Operation: " << exportedOperationName << "\r\n" \
+           "Return value: "<< returnCode << "\r\n" \
+           "Error code: " << GetLastError() << "\r\n" \
+           "Description: " << description.c_str();
 
     std::cerr << oss.str();
 }
@@ -91,11 +68,11 @@ inline void StlError(std::string_view action_description, int line,
     std::string_view qualified_name, std::string_view exported_operation_name,
     int32_t return_code) {
     std::ostringstream oss;
-    oss << u8"An error occurred while trying to " << action_description << "\r\n\r\n" \
-           u8"Location: Line " << line << "fsb.exe (" << qualified_name << ")\r\n" \
-           u8"Operation: " << exported_operation_name << "\r\n" \
-           u8"Return value: "<< return_code << u8"\r\n" \
-           u8"Error code: " << errno << u8"\r\n";
+    oss << "An error occurred while trying to " << action_description << "\r\n\r\n" \
+           "Location: Line " << line << "fsb.exe (" << qualified_name << ")\r\n" \
+           "Operation: " << exported_operation_name << "\r\n" \
+           "Return value: "<< return_code << "\r\n" \
+           "Error code: " << errno << "\r\n";
 
     std::cerr << oss.str();
 }
