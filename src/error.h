@@ -56,9 +56,9 @@
 #define FSB_NULL_ARGUMENT          0xFB000006
 
 namespace fsb {
-inline void win32_error(std::string_view action_description, int line,
-    std::string_view qualified_name, std::string_view exported_operation_name,
-    int32_t return_code) {
+inline void Win32Error(std::string_view actionDescription, int line,
+    std::string_view qualifiedName, std::string_view exportedOperationName,
+    int32_t returnCode) {
     wchar_t* buffer = nullptr;
     (void)FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
@@ -70,24 +70,24 @@ inline void win32_error(std::string_view action_description, int line,
     if (buffer) LocalFree(buffer);
 
     std::ostringstream oss;
-    oss << u8"An error occurred while trying to " << action_description << "\r\n\r\n" \
-           u8"Location: Line " << line << "fsb.exe (" << qualified_name << ")\r\n" \
-           u8"Operation: " << exported_operation_name << "\r\n" \
-           u8"Return value: "<< return_code << u8"\r\n" \
+    oss << u8"An error occurred while trying to " << actionDescription << "\r\n\r\n" \
+           u8"Location: Line " << line << "fsb.exe (" << qualifiedName << ")\r\n" \
+           u8"Operation: " << exportedOperationName << "\r\n" \
+           u8"Return value: "<< returnCode << u8"\r\n" \
            u8"Error code: " << GetLastError() << u8"\r\n" \
            u8"Description: " << description.c_str();
 
     std::cerr << oss.str();
 }
 
-inline void failfast_win32(std::string_view action_description, int line,
+inline void FailfastWin32(std::string_view action_description, int line,
     std::string_view qualified_name, std::string_view exported_operation_name,
     int32_t return_code) {
-    win32_error(action_description, line, qualified_name, exported_operation_name, return_code);
+    Win32Error(action_description, line, qualified_name, exported_operation_name, return_code);
     std::abort();
 }
 
-inline void stl_error(std::string_view action_description, int line,
+inline void StlError(std::string_view action_description, int line,
     std::string_view qualified_name, std::string_view exported_operation_name,
     int32_t return_code) {
     std::ostringstream oss;
@@ -100,25 +100,25 @@ inline void stl_error(std::string_view action_description, int line,
     std::cerr << oss.str();
 }
 
-inline void failfast_stl(std::string_view action_description, int line,
+inline void FailfastStl(std::string_view action_description, int line,
     std::string_view qualified_name, std::string_view exported_operation_name,
     int32_t return_code) {
-    stl_error(action_description, line, qualified_name, exported_operation_name, return_code);
+    StlError(action_description, line, qualified_name, exported_operation_name, return_code);
     std::abort();
 }
 }
 
 #define WIN32_ERROR(action_description, qualified_name, exported_operation_name, return_code) \
-    fsb::win32_error(action_description, __LINE__, qualified_name, exported_operation_name, \
+    fsb::Win32Error(action_description, __LINE__, qualified_name, exported_operation_name, \
                      return_code)
 #define WIN32_FAILFAST(action_description, qualified_name, exported_operation_name, return_code) \
-    fsb::failfast_win32(action_description, __LINE__, qualified_name, exported_operation_name, \
+    fsb::FailfastWin32(action_description, __LINE__, qualified_name, exported_operation_name, \
                         return_code)
 #define STL_ERROR(action_description, qualified_name, exported_operation_name, return_code) \
-    fsb::stl_error(action_description __LINE__, qualified_name, exported_operation_name, \
+    fsb::StlError(action_description __LINE__, qualified_name, exported_operation_name, \
                    return_code)
 #define STL_FAILFAST(action_description, qualified_name, exported_operation_name, return_code) \
-    fsb::failfast_stl(action_description __LINE__, qualified_name, exported_operation_name, \
+    fsb::FailfastStl(action_description __LINE__, qualified_name, exported_operation_name, \
                       return_code)
 
 #endif

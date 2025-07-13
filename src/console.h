@@ -36,6 +36,7 @@ public:
     ~Console();
 private:
     bool GetWindowAttributes(HWND windowHandle, WindowAttributes* windowAttributes);
+    bool GetWindowMetrics(HWND windowHandle, WindowMetrics* windowMetrics);
     void ClearConsole();
     int EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam);
     std::vector<ProcessData> windows_;

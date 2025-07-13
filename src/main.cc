@@ -78,7 +78,7 @@ void init_console() {
             nullptr, GetLastError(),
             0, reinterpret_cast<wchar_t*>(&buffer), 0, nullptr);
 
-        std::string description = utf16_to_utf8(buffer ? buffer : L"Unknown error.");
+        std::string description = Utf16ToUtf8(buffer ? buffer : L"Unknown error.");
         if (buffer) LocalFree(buffer);
 
         std::ostringstream oss;
@@ -144,7 +144,7 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
             nullptr, GetLastError(),
             0, reinterpret_cast<wchar_t*>(&buffer), 0, nullptr);
 
-        std::string description = utf16_to_utf8(buffer ? buffer : L"Unknown error.");
+        std::string description = Utf16ToUtf8(buffer ? buffer : L"Unknown error.");
         if (buffer) LocalFree(buffer);
 
         std::ostringstream oss;
@@ -172,7 +172,7 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
                 nullptr, GetLastError(),
                 0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-            std::string description = utf16_to_utf8(err_buffer ? err_buffer : L"Unknown error.");
+            std::string description = Utf16ToUtf8(err_buffer ? err_buffer : L"Unknown error.");
             if (err_buffer) LocalFree(err_buffer);
 
             std::ostringstream oss;
@@ -189,7 +189,7 @@ int EnumWindowsProc(HWND window_handle, LPARAM message_param) {
     }
 
     // Put the buffer into a proper string and check if the window is a foreground window
-    if (std::string title = utf16_to_utf8(buffer);
+    if (std::string title = Utf16ToUtf8(buffer);
         IsWindowVisible(window_handle) && !title.empty()) {
         // If so, add it to the vector
         windows.push_back({process_id, window_handle, title});
@@ -265,7 +265,7 @@ void show_console_menu() {
                 nullptr, GetLastError(),
                 0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-            std::string description = utf16_to_utf8(err_buffer ? err_buffer : L"Unknown error.");
+            std::string description = Utf16ToUtf8(err_buffer ? err_buffer : L"Unknown error.");
             if (err_buffer) LocalFree(err_buffer);
 
             std::ostringstream oss;
@@ -288,7 +288,7 @@ void show_console_menu() {
                 nullptr, GetLastError(),
                 0, reinterpret_cast<wchar_t*>(&err_buffer), 0, nullptr);
 
-            std::string description = utf16_to_utf8(err_buffer ? err_buffer : L"Unknown error.");
+            std::string description = Utf16ToUtf8(err_buffer ? err_buffer : L"Unknown error.");
             if (err_buffer) LocalFree(err_buffer);
 
             std::ostringstream oss;

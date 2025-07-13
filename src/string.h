@@ -11,8 +11,8 @@
 //
 // Classes:     None
 //
-// Functions:   fsb::utf16_to_utf8(std::wstring_view)
-//              fsb::utf8_to_utf16(std::string_view)
+// Functions:   fsb::Utf16ToUtf8(std::wstring_view)
+//              fsb::Utf8ToUtf16(std::string_view)
 //
 // Macros:      None
 //
@@ -36,7 +36,7 @@ namespace fsb {
 //!
 //! @param input The wide string input to be converted.
 //! @returns Returns the UTF-8 output of the inputted UTF-16 string.
-inline std::string utf16_to_utf8(std::wstring_view input) {
+inline std::string Utf16ToUtf8(std::wstring_view input) {
     const auto* u16buf = reinterpret_cast<const char16_t*>(input.data());
     std::string output;
     // Cast to void as return value isn't needed
@@ -53,7 +53,7 @@ inline std::string utf16_to_utf8(std::wstring_view input) {
 //!
 //! @param input The wide string input to be converted.
 //! @returns Returns the UTF-8 output of the inputted UTF-16 string.
-inline std::wstring utf8_to_utf16(std::string_view input) {
+inline std::wstring Utf8ToUtf16(std::string_view input) {
     const auto* u8buf = reinterpret_cast<const uint8_t*>(input.data());
     std::wstring output;
     // Cast to void as return value isn't needed

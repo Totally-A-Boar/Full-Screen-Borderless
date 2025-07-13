@@ -37,7 +37,7 @@ Console::Console() {
         // Exit the application right after
         WIN32_ERROR("setup the console for correct I/O.", "fsb::Console::Console",
             "Kernel32.dll!GetStdHandle", -1);
-        std::exit(kFsbConsoleInitFailure);
+        std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
     CONSOLE_CURSOR_INFO consoleCursorInfo;
     (void)GetConsoleCursorInfo(consoleHandle, &consoleCursorInfo);
@@ -48,7 +48,7 @@ Console::Console() {
     if (!SetConsoleOutputCP(CP_UTF8) || !SetConsoleCP(CP_UTF8)) {
         WIN32_ERROR("set the console output code page.", "fsb::Console::Console",
             "Kernel32.dll!SetConsoleOutputCP", 0);
-        std::exit(kFsbConsoleInitFailure);
+        std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
 
     // Set the console mode to text
@@ -69,7 +69,7 @@ Console::~Console() {
         // Exit the application right after
         WIN32_ERROR("uninitialize the console.", "fsb::Console::~Console",
             "Kernel32.dll!GetStdHandle", -1);
-        std::exit(kFsbConsoleUninitFailure);
+        std::exit(FSB_CONSOLE_UNINIT_FAILURE);
     }
 
     CONSOLE_CURSOR_INFO cursorInfo;
@@ -126,6 +126,18 @@ bool Console::GetWindowAttributes(HWND windowHandle, WindowAttributes* windowAtt
 
     return true;
 }
+
+bool Console::GetWindowMetrics(HWND windowHandle, WindowMetrics* windowMetrics) {
+    // Make sure the window handle is valid
+    if (windowHandle == nullptr || !IsWindow(windowHandle)) {
+        return false;
+    }
+
+    SizeVec2 windowPosition = {};
+
+    return true;
+}
+
 
 void Console::ClearConsole() {
     // Enable ANSI escape codes because Windows consoles don't interpret them by default
@@ -216,6 +228,7 @@ int Console::EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam) {
         }
     }
 
+    // Get the window attributes
     WindowAttributes windowAttributes = {};
     if (!GetWindowAttributes(windowHandle, &windowAttributes)) {
         std::string_view actionDescription = "get the attributes for a window";
@@ -224,6 +237,9 @@ int Console::EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam) {
         WIN32_ERROR(actionDescription, qualifiedName, exportedOperationName,
             GetLastError());
     }
+
+    // Get the window metrics
+
 
     // To-do: finish loop implementation and store variables in the class vector.
 
