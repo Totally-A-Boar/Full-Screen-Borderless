@@ -37,14 +37,14 @@ struct SizeVec2 {
 };
 
 struct WindowMetrics {
-    SizeVec2 position;
-    SizeVec2 size;
-    std::string fontName;
-    uint32_t fontSize;
+    SizeVec2 position_;
+    SizeVec2 size_;
+    std::string font_name_;
+    uint32_t font_size_;
     //! @note DWORD type stored as uint32_t. Should always cast to DWORD when using or cast to
     //! uint32_t when storing.
-    uint32_t style;
-    uint32_t exStyle;
+    uint32_t style_;
+    uint32_t ex_style_;
 };
 
 enum class WindowState {
@@ -54,9 +54,9 @@ enum class WindowState {
 };
 
 struct WindowAttributes {
-    bool isVisible;
-    bool isEnabled;
-    WindowState state;
+    bool is_visible_;
+    bool is_enabled_;
+    WindowState state_;
 };
 
 //! @brief Holds information about a process and its associated window.
@@ -66,15 +66,15 @@ struct WindowAttributes {
 struct ProcessData {
     //! Handle to the window. This is the actual property used by the application to apply the
     //! full-screen property.
-    HWND windowHandle;
+    HWND window_handle_;
     //! The process ID associated with the window/application.
-    uint32_t processId;
+    uint32_t process_id_;
     //! Title of the window to display in the interface.
-    std::string title;
-    std::string className;
-    std::string fileName;
-    WindowAttributes attributes;
-    WindowMetrics metrics;
+    std::string title_;
+    std::string class_name_;
+    std::string file_name_;
+    WindowAttributes attributes_;
+    WindowMetrics metrics_;
 };
 
 }  // namespace fsb

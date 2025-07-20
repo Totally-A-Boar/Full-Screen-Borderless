@@ -7,6 +7,7 @@
 #include "error.h"
 #include "fsb_string.h"
 
+#include <cassert>
 #include <fcntl.h>
 #include <io.h>
 #include <sstream>
@@ -14,27 +15,28 @@
 
 namespace fsb {
 Console::Console() {
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (consoleHandle == INVALID_HANDLE_VALUE) {
+    const auto kConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (kConsoleHandle == INVALID_HANDLE_VALUE) {
         constexpr std::string_view kActionDesc = "setup the console for UTF-8 I/O.";
         constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
-        constexpr std::string_view kFailingFunction = "Kernel32.dll!GetStdHandle";
+        constexpr std::string_view kExportedFunctionName = "Kernel32.dll!GetStdHandle";
         constexpr int32_t kReturnValue = -1;
-        WIN32_ERROR(kActionDesc, kQualifiedName, kFailingFunction, kReturnValue);
+        WIN32_ERROR(kActionDesc, kQualifiedName, kExportedFunctionName, kReturnValue);
         std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
-    CONSOLE_CURSOR_INFO info;
-    static_cast<void>(GetConsoleCursorInfo(consoleHandle, &info));
-    info.bVisible = false;
-    static_cast<void>(SetConsoleCursorInfo(consoleHandle, &info));
 
-    // Active code page needs to be set to UTF-8 for proper Unicode output
+    // Calls can only fail if the handle is invalid
+    CONSOLE_CURSOR_INFO info;
+    static_cast<void>(GetConsoleCursorInfo(kConsoleHandle, &info));
+    info.bVisible = false;
+    static_cast<void>(SetConsoleCursorInfo(kConsoleHandle, &info));
+
     if (!SetConsoleOutputCP(CP_UTF8) || !SetConsoleCP(CP_UTF8)) {
         constexpr std::string_view kActionDesc = "setup the console active code page.";
         constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
-        constexpr std::string_view kFailingFunction = "Kernel32.dll!SetConsoleOutputCP";
+        constexpr std::string_view kExportedFunctionName = "Kernel32.dll!SetConsoleOutputCP";
         constexpr int32_t kReturnValue = 0;
-        WIN32_ERROR(kActionDesc, kQualifiedName, kFailingFunction, kReturnValue);
+        WIN32_ERROR(kActionDesc, kQualifiedName, kExportedFunctionName, kReturnValue);
         std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
 
@@ -52,194 +54,265 @@ Console::Console() {
 }
 
 Console::~Console() {
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (consoleHandle == INVALID_HANDLE_VALUE) {
-        // Exit the application right after
-        WIN32_ERROR("uninitialize the console.", "fsb::Console::~Console",
-            "Kernel32.dll!GetStdHandle", -1);
+    const auto kConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (kConsoleHandle == INVALID_HANDLE_VALUE) {
+        constexpr std::string_view kActionDescription = "uninitialize the console.";
+        constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
+        constexpr std::string_view kExportedFunctionName = "Kernel32.dll!GetStdHandle";
+        constexpr int32_t kReturnValue = -1;
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedFunctionName, kReturnValue);
         std::exit(FSB_CONSOLE_UNINIT_FAILURE);
     }
 
     CONSOLE_CURSOR_INFO cursorInfo;
 
-    (void)GetConsoleCursorInfo(consoleHandle, &cursorInfo);
-    cursorInfo.dwSize = 25;
+    static_cast<void>(GetConsoleCursorInfo(kConsoleHandle, &cursorInfo));
+    cursorInfo.dwSize = 25; // Default cursor size in Windows
     cursorInfo.bVisible = true;
-    (void)SetConsoleCursorInfo(consoleHandle, &cursorInfo);
+    static_cast<void>(SetConsoleCursorInfo(kConsoleHandle, &cursorInfo));
 }
 
-bool Console::GetWindowAttributes(HWND windowHandle, WindowAttributes* windowAttributes) {
-    // Ensure the passed handle is valid
-    if (windowHandle == nullptr || !IsWindow(windowHandle)) {
+bool Console::GetWindowAttributes(HWND window_handle, WindowAttributes* window_attributes) {
+    if (window_handle == nullptr || !IsWindow(window_handle)) {
         return false;
     }
 
-    // Check whether the window is visible
-    bool isWindowVisible = IsWindowVisible(windowHandle);
+    const bool kIsWindowVisible = IsWindowVisible(window_handle);
 
-    // Check whether the window is enabled
-    bool isWindowEnabled = IsWindowEnabled(windowHandle);
+    const bool kIsWindowEnabled = IsWindowEnabled(window_handle);
 
-    // Check the window state.
-    WindowState windowState = WindowState::Normal;
-    WINDOWPLACEMENT windowPlacement;
-    windowPlacement.length = sizeof(windowPlacement);
+    WindowState window_state = WindowState::Normal;
+    WINDOWPLACEMENT window_placement;
+    window_placement.length = sizeof(window_placement);
 
-    if (GetWindowPlacement(windowHandle, &windowPlacement)) {
+    if (GetWindowPlacement(window_handle, &window_placement)) {
         // showCmd is the property used to determine window state.
         // For example, nCmdShow in the WinMain entry point is the state to show the window in.
         // I used to think it meant whether to show the CMD window or not, however it means show
         // command not show command prompt.
         // It's only real use is this and ShowWindow which is the prefix in the macro SW means.
         // The values we need here are SW_SHOWMAXIMIZED, SW_SHOWMINIMIZED, SW_SHOWNORMAL and/or
-        // SW_RESTORE (these two mean the same and have the same value).
-        switch (windowPlacement.showCmd) {
+        // SW_RESTORE (these two mean the same).
+        switch (window_placement.showCmd) {
             case SW_SHOWMAXIMIZED:
-                windowState = WindowState::Maximized;
+                window_state = WindowState::Maximized;
                 break;
             case SW_SHOWMINIMIZED:
-                windowState = WindowState::Minimized;
+                window_state = WindowState::Minimized;
                 break;
-            case SW_SHOWNORMAL:
-            case SW_RESTORE:
-                windowState = WindowState::Normal;
             default:
-                windowState = WindowState::Normal;
+                window_state = WindowState::Normal;
+                break;
         }
     } else {
         return false;
     }
 
-    windowAttributes->isEnabled = isWindowEnabled;
-    windowAttributes->isVisible = isWindowVisible;
-    windowAttributes->state = windowState;
+    window_attributes->is_enabled_ = kIsWindowEnabled;
+    window_attributes->is_visible_ = kIsWindowVisible;
+    window_attributes->state_ = window_state;
 
     return true;
 }
 
-bool Console::GetWindowMetrics(HWND windowHandle, WindowMetrics* windowMetrics) {
-    // Make sure the window handle is valid
-    if (windowHandle == nullptr || !IsWindow(windowHandle)) {
+bool Console::GetWindowMetrics(HWND window_handle, WindowMetrics* window_metrics) {
+    if (window_handle == nullptr || !IsWindow(window_handle)) {
         return false;
     }
 
-    SizeVec2 windowPosition = {};
-    RECT windowRect;
-    if (!GetWindowRect(windowHandle, &windowRect)) {
-        // To-do: log error
+    RECT window_rect;
+    if (!GetWindowRect(window_handle, &window_rect)) {
+        return false;
     }
 
-    // To-do: finish implementing
+    int32_t x, y, width, height;
+    x = window_rect.left;
+    y = window_rect.top;
+    width = window_rect.right - window_rect.left;
+    height = window_rect.bottom - window_rect.top;
+
+    auto font_handle = reinterpret_cast<HFONT>(SendMessageW(window_handle, WM_GETFONT,
+        0, 0));
+
+    std::string font_name = "";
+    uint32_t font_size = 0;
+
+    LOGFONT log_font = {};
+    if (font_handle != nullptr) {
+        if (GetObjectW(font_handle, sizeof(LOGFONT), &log_font)) {
+            std::wstring buffer = log_font.lfFaceName;
+            font_name = Utf16ToUtf8(buffer);
+
+            HDC device_context = GetDC(window_handle);
+            int dpi = GetDeviceCaps(device_context, LOGPIXELSY);
+            ReleaseDC(window_handle, device_context);
+
+            // Conversion: font size (in pixels) = lfHeight * 72 / DPI.
+            // 72 in this case is representative of 1 point (pixel) being 1/72 of an inch which is
+            // divided by DPI in case the dots per inch is more than 1/72.
+            if (log_font.lfHeight < 0) {
+                // Normally, negative height means character height in logical units.
+                font_size = static_cast<uint32_t>(-log_font.lfHeight * 72 / dpi);
+            } else {
+                // While uncommon, positive height is possible.
+                // Consider calling GetTextMetrics if this conversion is buggy.
+                font_size = static_cast<uint32_t>(log_font.lfHeight * 72 / dpi);
+            }
+        }
+    } else {
+        // To-do (jhowell728): Implement logging calls.
+        font_name = "None";
+        font_size = 0;
+    }
+
+    const uint32_t kStyle = static_cast<uint32_t>(GetWindowLongPtrW(window_handle,
+        GWL_STYLE));
+    const uint32_t kExStyle = static_cast<uint32_t>(GetWindowLongPtrW(window_handle,
+        GWL_EXSTYLE));
+
+    const SizeVec2 kPosition = {x, y};
+    const SizeVec2 kSize = {width, height};
+
+    window_metrics->position_ = kPosition;
+    window_metrics->size_ = kSize;
+    window_metrics->font_name_ = font_name;
+    window_metrics->font_size_ = font_size;
+    window_metrics->style_ = kStyle;
+    window_metrics->ex_style_ = kExStyle;
 
     return true;
 }
 
 
 void Console::ClearConsole() {
-    // Enable ANSI escape codes because Windows consoles don't interpret them by default
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (consoleHandle == INVALID_HANDLE_VALUE) {
-        // The application does not need to exit if this call fails, though we should log it
-        // for debugging.
-        WIN32_ERROR("clear the console.", "fsb::Console::ClearConsole",
-            "Kernel32.dll!GetStdHandle", -1);
+    // Modern Windows consoles (post UTF-16 implementation) don't interpret ANSI escape codes and
+    // must be either set via attributes or ANSI codes must be enabled
+    auto console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console_handle == INVALID_HANDLE_VALUE) {
+        constexpr std::string_view kActionDescription = "clear the console.";
+        constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::ClearConsole";
+        constexpr std::string_view kExportedFunctionName = "Kernel32.dll!GetStdHandle";
+        constexpr int32_t kReturnCode = -1;
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedFunctionName, kReturnCode);
+        return;
     }
 
     DWORD mode = 0;
-    if (consoleHandle != INVALID_HANDLE_VALUE && GetConsoleMode(consoleHandle, &mode)) {
-        // Only set the flag if it isn't set
+    if (GetConsoleMode(console_handle, &mode)) {
         if (!(mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
-            SetConsoleMode(consoleHandle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+            SetConsoleMode(console_handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
         }
     }
 
-    std::cout << "\033c[2J\033[1;1H";
+    std::cout << "\033c[2J\033[H" << std::flush;
 }
 
-int Console::EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam) {
-    // messageParam is unused, however, it cannot be omitted from the function signature as
-    // EnumWindows expects this signature
-    UNREFERENCED_PARAMETER(messageParam);
-
-    if (windowHandle == nullptr || !IsWindow(windowHandle)) {
-        return FSB_NULL_ARGUMENT; // The window is null so skip this iteration
+// To-do (jhowell728): clean up logic and add better error codes
+int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
+    if (window_handle == nullptr || !IsWindow(window_handle)) {
+        return 0; // Returning 1 will stop enumeration completely
     }
 
     // Save the display information
-    DWORD processId = 0;
+    uint32_t process_id = 0;
     // GetWindowThreadProcessId will return 0 on failure
-    if (GetWindowThreadProcessId(windowHandle, &processId) == 0) {
-        std::string_view actionDescription = "get the process ID for a window.";
-        std::string_view qualifiedName = "console.cc::fsb::Console::EnumWindowsProcedure";
-        std::string_view exportedOperationName = "User32.dll!GetWindowThreadProcessId";
-        WIN32_ERROR(actionDescription, qualifiedName, exportedOperationName, 0);
+    if (GetWindowThreadProcessId(window_handle, reinterpret_cast<DWORD*>(&process_id)) == 0) {
+        constexpr std::string_view kActionDescription = "get the process ID for a window.";
+        constexpr std::string_view kQualifiedName =
+            "console.cc::fsb::Console::EnumWindowsCallback";
+        constexpr std::string_view kExportedFunctionName = "User32.dll!GetWindowThreadProcessId";
+        constexpr int32_t kReturnCode = 0;
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedFunctionName, kReturnCode);
+        return 0;
     }
 
-    wchar_t titleBuffer[256];
-    // GetWindowTextW returns the length of the string it wrote. This function will always
-    // truncate to the size of your buffer -1 for the null terminator (in this case 255).
-    // On failure this function sets the last error to the issue that it ran in to, so you have
-    // to be sure to check that on failure.
-    // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowtextw
-    if (GetWindowTextW(windowHandle, titleBuffer, std::size(titleBuffer)) == 0) {
-        // The interface/messaging system to get the window title (WM_GETTEXT) was not found in the
-        // window procedure for the inputted handle. We can safely ignore this error.
-        if (GetLastError() != 0 && GetLastError() != ERROR_SEM_NOT_FOUND) {
-            std::string_view actionDescription = "get the title of a window.";
-            std::string_view qualifiedName = "console.cc::fsb::Console::EnumWindowsProcedure";
-            std::string_view exportedOperationName = "User32.dll!GetWindowTextW";
-            WIN32_ERROR(actionDescription, qualifiedName, exportedOperationName, GetLastError());
-
-            return FSB_GENERIC_FAILURE;
+    wchar_t title_buffer[256];
+    if (GetWindowTextW(window_handle, title_buffer, std::size(title_buffer)) == 0) {
+        // We can safely ignore this error.
+        if (constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+            kReturnCode != 0 && kReturnCode != ERROR_SEM_NOT_FOUND) {
+            constexpr std::string_view kActionDescription = "get the title of a window.";
+            constexpr std::string_view kQualifiedName =
+                "console.cc::fsb::Console::EnumWindowsCallback";
+            constexpr std::string_view kExportedOperationName = "User32.dll!GetWindowTextW";
+            WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+            return 0;
         }
     }
 
-    wchar_t classBuffer[256];
-    // WNDCLASSEX only allows 256 characters so there should be no truncation issues should be here
-    // This one also fails with return code 0, but, since every window has to be registered with an
-    // actual window class name, it should always return. Access denied is the only ignorable error
-    // in this case, however, I still log it.
-    if (GetClassNameW(windowHandle, classBuffer, std::size(classBuffer)) == 0) {
-        if (GetLastError() != 0) {
-            std::string_view actionDescription = "get the class name of a window.";
-            std::string_view qualifiedName = "console.cc::fsb::Console::EnumWindowsProcedure";
-            std::string_view exportedOperationName = "User32.dll!GetClassNameW";
-            WIN32_ERROR(actionDescription, qualifiedName, exportedOperationName,
-                GetLastError());
+    wchar_t class_buffer[256];
+    if (GetClassNameW(window_handle, class_buffer, std::size(class_buffer)) == 0) {
+        if (constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+            kReturnCode != 0) {
+            constexpr std::string_view kActionDescription = "get the class name of a window.";
+            constexpr std::string_view kQualifiedName =
+                "console.cc::fsb::Console::EnumWindowsCallback";
+            constexpr std::string_view kExportedOperationName = "User32.dll!GetClassNameW";
+            WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+            return 0;
         }
     }
 
-    wchar_t fileBuffer[256];
-    auto moduleHandle = reinterpret_cast<HMODULE>(GetWindowLongPtrW(windowHandle,
+    wchar_t file_buffer[256];
+    auto module_handle = reinterpret_cast<HMODULE>(GetWindowLongPtrW(window_handle,
         GWLP_HINSTANCE));
-    if (GetModuleFileNameW(moduleHandle, fileBuffer, std::size(fileBuffer)) == 0) {
-        FSB_ASSERT(GetLastError() != ERROR_INSUFFICIENT_BUFFER, "Buffer is too small",
-            "The buffer for GetModuleFileNameW is too small");
-        if (GetLastError() != 0) {
-            std::string_view actionDescription = "get the file name of a process.";
-            std::string_view qualifiedName = "console.cc::fsb::Console::EnumWindowsProcedure";
-            std::string_view exportedOperationName = "Kernel32.dll!GetModuleFileNameW";
-            WIN32_ERROR(actionDescription, qualifiedName, exportedOperationName,
-                GetLastError());
+    if (GetModuleFileNameW(module_handle, file_buffer, std::size(file_buffer)) == 0) {
+        if (constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+            kReturnCode != 0) {
+            constexpr std::string_view kActionDescription = "get the file name of a process.";
+            constexpr std::string_view kQualifiedName =
+                "console.cc::fsb::Console::EnumWindowsCallback";
+            constexpr std::string_view kExportedOperationName = "Kernel32.dll!GetModuleFileNameW";
+            WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+            return 0;
         }
     }
 
-    // Get the window attributes
-    WindowAttributes windowAttributes = {};
-    if (!GetWindowAttributes(windowHandle, &windowAttributes)) {
-        std::string_view actionDescription = "get the attributes for a window";
-        std::string_view qualifiedName = "console.cc::fsb::Console::EnumWindowsProcedure";
-        std::string_view exportedOperationName = "fsb.exe!GetWindowAttributes";
-        WIN32_ERROR(actionDescription, qualifiedName, exportedOperationName,
-            GetLastError());
+    WindowAttributes window_attributes = {};
+    if (!GetWindowAttributes(window_handle, &window_attributes)) {
+        constexpr std::string_view kActionDescription = "get the attributes for a window";
+        constexpr std::string_view kQualifiedName =
+            "console.cc::fsb::Console::EnumWindowsCallback";
+        constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowAttributes";
+        constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+        return 0;
     }
 
-    // Get the window metrics
+    WindowMetrics window_metrics = {};
+    if (!GetWindowMetrics(window_handle, &window_metrics)) {
+        constexpr std::string_view kActionDescription = "get the metrics for a window";
+        constexpr std::string_view kQualifiedName =
+            "console.cc::fsb::Console::EnumWindowsCallback";
+        constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowMetrics";
+        constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+        return 0;
+    }
 
+    std::string title = Utf16ToUtf8(title_buffer);
+    std::string class_name = Utf16ToUtf8(class_buffer);
+    std::string file_name = Utf16ToUtf8(file_buffer);
 
-    // To-do: finish loop implementation and store variables in the class vector.
+    ProcessData process_data = {};
+    process_data.attributes_ = window_attributes;
+    process_data.class_name_ = class_name;
+    process_data.file_name_ = file_name;
+    process_data.metrics_ = window_metrics;
+    process_data.process_id_ = process_id;
+    process_data.title_ = title;
+    process_data.window_handle_ = window_handle;
+
+    auto console = reinterpret_cast<Console*>(message_param);
+    console->windows_.push_back(process_data);
 
     return 0;
 }
+
+void Console::RefreshWindows() {
+    EnumWindows(EnumWindowsCallback, reinterpret_cast<LPARAM>(this));
+}
+
+
 
 } // namespace fsb

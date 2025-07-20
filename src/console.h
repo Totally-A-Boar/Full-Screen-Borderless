@@ -16,11 +16,15 @@ class Console {
 public:
     Console();
     ~Console();
+
+    void ShowMenu();
 private:
-    bool GetWindowAttributes(HWND windowHandle, WindowAttributes* windowAttributes);
-    bool GetWindowMetrics(HWND windowHandle, WindowMetrics* windowMetrics);
+    static bool GetWindowAttributes(HWND window_handle, WindowAttributes* window_attributes);
+    static bool GetWindowMetrics(HWND window_handle, WindowMetrics* window_metrics);
     void ClearConsole();
-    int EnumWindowsProcedure(HWND windowHandle, LPARAM messageParam);
+    static int EnumWindowsCallback(HWND window_handle, LPARAM message_param);
+    void RefreshWindows();
+    bool SetWindowStyle(HWND window_handle, uint32_t style);
     std::vector<ProcessData> windows_;
 };
 }

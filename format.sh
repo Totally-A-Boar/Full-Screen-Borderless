@@ -20,6 +20,6 @@ fi
 
 # Format the files
 clang-format -i src/*.cc
-clang-format -i src/*.hh
+clang-format -i src/*.h
 
 echo "Formatting has completed."
