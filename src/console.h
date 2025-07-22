@@ -21,6 +21,7 @@ public:
 private:
     static bool GetWindowAttributes(HWND window_handle, WindowAttributes* window_attributes);
     static bool GetWindowMetrics(HWND window_handle, WindowMetrics* window_metrics);
+    static std::string GetProcessFileName(uint32_t process_id);
     void ClearConsole();
     static int EnumWindowsCallback(HWND window_handle, LPARAM message_param);
     void RefreshWindows();
