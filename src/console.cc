@@ -234,9 +234,7 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         return 1;
     }
 
-    // Save the display information
     uint32_t process_id = 0;
-    // GetWindowThreadProcessId will return 0 on failure
     if (GetWindowThreadProcessId(window_handle, reinterpret_cast<DWORD*>(&process_id)) == 0) {
         constexpr std::string_view kActionDescription = "get the process ID for a window.";
         constexpr std::string_view kQualifiedName =
@@ -250,16 +248,13 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
     wchar_t title_buffer[256];
     if (GetWindowTextW(window_handle, title_buffer, std::size(title_buffer)) == 0) {
         if (const auto kReturnCode = static_cast<uint32_t>(GetLastError());
-            kReturnCode != 0 && kReturnCode != ERROR_SEM_NOT_FOUND) {
-            if (kReturnCode == ERROR_ACCESS_DENIED) {
-                std::cout << process_id << "\n";
-            }
+            kReturnCode != 0 && kReturnCode != ERROR_SEM_NOT_FOUND
+            && kReturnCode != ERROR_ACCESS_DENIED) {
             constexpr std::string_view kActionDescription = "get the title of a window.";
             constexpr std::string_view kQualifiedName =
                 "console.cc::fsb::Console::EnumWindowsCallback";
             constexpr std::string_view kExportedOperationName = "User32.dll!GetWindowTextW";
             WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
-            return 1;
         }
     }
 
@@ -272,7 +267,6 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
                 "console.cc::fsb::Console::EnumWindowsCallback";
             constexpr std::string_view kExportedOperationName = "User32.dll!GetClassNameW";
             WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
-            return 1;
         }
     }
 
@@ -284,7 +278,6 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowAttributes";
         const auto kReturnCode = static_cast<uint32_t>(GetLastError());
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
-        return 1;
     }
 
     WindowMetrics window_metrics = {};
@@ -295,10 +288,15 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowMetrics";
         const auto kReturnCode = static_cast<uint32_t>(GetLastError());
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
-        return 1;
     }
 
-    std::string title = Utf16ToUtf8(title_buffer);
+    std::string title;
+    if (title_buffer[0] == L'\0') {
+        title = "";
+    } else {
+        title = Utf16ToUtf8(title_buffer);
+    }
+
     std::string class_name = Utf16ToUtf8(class_buffer);
     std::string file_name = GetProcessFileName(process_id);
 

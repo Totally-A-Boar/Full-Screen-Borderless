@@ -88,6 +88,38 @@ inline void FailfastStl(std::string_view action_description, int line,
     StlError(action_description, line, qualified_name, exported_operation_name, return_code);
     std::abort();
 }
+
+inline void DumpProcessData(const ProcessData& process_data) {
+    std::cout << "Debug process data dump\n";
+    std::cout << "Title: " << process_data.title_ << "\n";
+    std::cout << "Class Name: " << process_data.class_name_ << "\n";
+    std::cout << "File Name: " << process_data.file_name_ << "\n";
+    std::cout << "Process ID: " << process_data.process_id_ << "\n";
+    std::cout << "Window Handle: " << process_data.window_handle_ << "\n";
+
+    std::cout << "Window Attributes:\n";
+    std::cout << "  Is Visible: " << (process_data.attributes_.is_visible_ ? "Yes" : "No") << "\n";
+    std::cout << "  Is Enabled: " << (process_data.attributes_.is_enabled_ ? "Yes" : "No") << "\n";
+    std::cout << "  State: ";
+    switch (process_data.attributes_.state_) {
+        case WindowState::Normal: std::cout << "Normal"; break;
+        case WindowState::Minimized: std::cout << "Minimized"; break;
+        case WindowState::Maximized: std::cout << "Maximized"; break;
+        default: std::cout << "Unknown"; break;
+    }
+    std::cout << "\n";
+
+    std::cout << "Window Metrics:\n";
+    std::cout << "  Position: (" << process_data.metrics_.position_.x
+              << ", " << process_data.metrics_.position_.y << ")\n";
+    std::cout << "  Size: (" << process_data.metrics_.size_.x
+              << ", " << process_data.metrics_.size_.y << ")\n";
+    std::cout << "  Font Name: " << process_data.metrics_.font_name_ << "\n";
+    std::cout << "  Font Size: " << process_data.metrics_.font_size_ << "\n";
+    std::cout << "  Style: 0x" << std::hex << process_data.metrics_.style_ << std::dec << "\n";
+    std::cout << "  ExStyle: 0x" << std::hex << process_data.metrics_.ex_style_ << std::dec << "\n";
+    std::cout << "\n";
+}
 }
 
 #define WIN32_ERROR(action_description, qualified_name, exported_operation_name, return_code) \
