@@ -7,7 +7,7 @@
 
 #include "fsb_assert.h"
 
-#include <utfcpp/source/utf8.h>
+#include <utf8.h>
 #include <string_view>
 
 namespace fsb {

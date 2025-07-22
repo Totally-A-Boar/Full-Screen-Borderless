@@ -24,7 +24,14 @@ private:
     void ClearConsole();
     static int EnumWindowsCallback(HWND window_handle, LPARAM message_param);
     void RefreshWindows();
-    bool SetWindowStyle(HWND window_handle, uint32_t style);
+    void DispatchKeyPress(char key, ProcessData* process_data);
+
+    bool clear_console_;
+    int refresh_line_;
+    bool menu_section_;
+    int index_section_0_;
+    int index_section_1_x_;
+    int index_section_1_y_;
     std::vector<ProcessData> windows_;
 };
 }

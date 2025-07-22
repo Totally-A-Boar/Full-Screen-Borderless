@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "fsb_string.h"
+#include <colors/colors.hpp>
 
 #include <cassert>
 #include <fcntl.h>
@@ -229,7 +230,7 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
     wchar_t title_buffer[256];
     if (GetWindowTextW(window_handle, title_buffer, std::size(title_buffer)) == 0) {
         // We can safely ignore this error.
-        if (constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        if (const auto kReturnCode = static_cast<uint32_t>(GetLastError());
             kReturnCode != 0 && kReturnCode != ERROR_SEM_NOT_FOUND) {
             constexpr std::string_view kActionDescription = "get the title of a window.";
             constexpr std::string_view kQualifiedName =
@@ -242,7 +243,7 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
 
     wchar_t class_buffer[256];
     if (GetClassNameW(window_handle, class_buffer, std::size(class_buffer)) == 0) {
-        if (constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        if (const auto kReturnCode = static_cast<uint32_t>(GetLastError());
             kReturnCode != 0) {
             constexpr std::string_view kActionDescription = "get the class name of a window.";
             constexpr std::string_view kQualifiedName =
@@ -256,8 +257,9 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
     wchar_t file_buffer[256];
     auto module_handle = reinterpret_cast<HMODULE>(GetWindowLongPtrW(window_handle,
         GWLP_HINSTANCE));
+    assert(module_handle != INVALID_HANDLE_VALUE);
     if (GetModuleFileNameW(module_handle, file_buffer, std::size(file_buffer)) == 0) {
-        if (constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        if (const auto kReturnCode = static_cast<uint32_t>(GetLastError());
             kReturnCode != 0) {
             constexpr std::string_view kActionDescription = "get the file name of a process.";
             constexpr std::string_view kQualifiedName =
@@ -274,7 +276,7 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         constexpr std::string_view kQualifiedName =
             "console.cc::fsb::Console::EnumWindowsCallback";
         constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowAttributes";
-        constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        const auto kReturnCode = static_cast<uint32_t>(GetLastError());
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
         return 0;
     }
@@ -285,7 +287,7 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         constexpr std::string_view kQualifiedName =
             "console.cc::fsb::Console::EnumWindowsCallback";
         constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowMetrics";
-        constexpr uint32_t kReturnCode = static_cast<uint32_t>(GetLastError());
+        const auto kReturnCode = static_cast<uint32_t>(GetLastError());
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
         return 0;
     }
@@ -310,9 +312,89 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
 }
 
 void Console::RefreshWindows() {
+    windows_.clear();
     EnumWindows(EnumWindowsCallback, reinterpret_cast<LPARAM>(this));
 }
 
+void Console::DispatchKeyPress(char key, ProcessData* process_data) {
+    UNREFERENCED_PARAMETER(process_data);
+    switch (toupper(key)) {
+        case VK_ESCAPE:
+        case 'Q':
+            std::exit(0);
+            break;
+        case 'R':
+            RefreshWindows();
+            break;
+        case VK_RETURN:
+            menu_section_ = true;
+            break;
+    }
+}
 
+void Console::ShowMenu() {
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console_handle == INVALID_HANDLE_VALUE) {
+        constexpr std::string_view kActionDescription = "get the console handle.";
+        constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::ShowMenu";
+        constexpr std::string_view kExportedOperationName = "Kernel32.dll!GetStdHandle";
+        constexpr int kReturnCode = -1;
+        WIN32_FAILFAST(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+    }
+
+    RefreshWindows();
+
+    while (true) {
+        assert(windows_.empty());
+        bool cursor_result = SetConsoleCursorPosition(console_handle,
+            {0, 0});
+        assert(cursor_result);
+
+        for (size_t i = 0; i < windows_.size(); ++i) {
+            assert(index_section_0_ < windows_.size());
+            if (i == index_section_0_) {
+                std::cout << colors::grey << colors::on_white;
+            } else {
+                std::cout << colors::reset;
+            }
+
+            std::cout << windows_[i].title_ << " [" << windows_[i].class_name_ << "] (" \
+                      << windows_[i].process_id_ << ")\n";
+            std::cout << colors::reset;
+        }
+
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        if (!GetConsoleScreenBufferInfo(console_handle, &info)) {
+            constexpr std::string_view kActionDescription = "get the console screen buffer.";
+            constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::ShowMenu";
+            constexpr std::string_view kExportedOperationName =
+                "Kernel32.dll!GetConsoleScreenBufferInfo";
+            constexpr int kReturnCode = 0;
+            WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+            std::exit(FSB_INVALID_HANDLE);
+        }
+
+        int width = info.srWindow.Right \
+            - info.srWindow.Left + 1;
+        int height = info.srWindow.Bottom \
+            - info.srWindow.Top + 1;
+        int cursor_y = info.dwCursorPosition.Y \
+            + info.srWindow.Top;
+
+        int lines_needed = (height - 6) - cursor_y;
+
+        for (int i = 0; i < lines_needed; ++i) {
+            std::cout << "\n";
+        }
+
+        std::string row(width, '=');
+        std::cout << row;
+        std::cout << "Controls go here.";
+
+        DispatchKeyPress(static_cast<char>(_getch()), &windows_[index_section_0_]);
+    }
+
+
+}
 
 } // namespace fsb

@@ -32,6 +32,9 @@
 // A null argument was passed to a function expecting a non-null value
 #define FSB_NULL_ARGUMENT          0xFB000006
 
+// A handle or a call to get Win32-related failed
+#define FSB_INVALID_HANDLE         0xFB000007
+
 namespace fsb {
 inline void Win32Error(std::string_view actionDescription, int line,
     std::string_view qualifiedName, std::string_view exportedOperationName,
@@ -43,12 +46,14 @@ inline void Win32Error(std::string_view actionDescription, int line,
         nullptr, GetLastError(),
         0, reinterpret_cast<wchar_t*>(&buffer), 0, nullptr);
 
-    std::wstring description = buffer ? buffer : L"Unknown error.";
+    std::wstring wdescription = buffer ? buffer : L"Unknown error.";
     if (buffer) LocalFree(buffer);
+
+    std::string description = Utf16ToUtf8(wdescription);
 
     std::ostringstream oss;
     oss << "An error occurred while trying to " << actionDescription << "\r\n\r\n" \
-           "Location: Line " << line << "fsb.exe (" << qualifiedName << ")\r\n" \
+           "Location: Line " << line << ", fsb.exe (" << qualifiedName << ")\r\n" \
            "Operation: " << exportedOperationName << "\r\n" \
            "Return value: "<< returnCode << "\r\n" \
            "Error code: " << GetLastError() << "\r\n" \
@@ -69,7 +74,7 @@ inline void StlError(std::string_view action_description, int line,
     int32_t return_code) {
     std::ostringstream oss;
     oss << "An error occurred while trying to " << action_description << "\r\n\r\n" \
-           "Location: Line " << line << "fsb.exe (" << qualified_name << ")\r\n" \
+           "Location: Line " << line << ", fsb.exe (" << qualified_name << ")\r\n" \
            "Operation: " << exported_operation_name << "\r\n" \
            "Return value: "<< return_code << "\r\n" \
            "Error code: " << errno << "\r\n";

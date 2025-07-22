@@ -19,7 +19,10 @@ endif ()
 
 set(CMAKE_GENERATOR_PLATFORM Win32)
 
-target_include_directories(fsb PRIVATE ${CMAKE_SOURCE_DIR}/third_party)
+target_include_directories(fsb PRIVATE
+        ${CMAKE_SOURCE_DIR}/third_party/colors/include
+        ${CMAKE_SOURCE_DIR}/third_party/utfcpp/source
+)
 
 # Compiler switch
 if (MSVC)
