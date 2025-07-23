@@ -132,8 +132,8 @@ bool Console::GetWindowMetrics(HWND window_handle, WindowMetrics* window_metrics
     width = window_rect.right - window_rect.left;
     height = window_rect.bottom - window_rect.top;
 
-    auto font_handle = reinterpret_cast<HFONT>(SendMessageW(window_handle, WM_GETFONT,
-        0, 0));
+    auto font_handle = reinterpret_cast<HFONT>(SendMessageTimeoutW(window_handle, WM_GETFONT,
+        0, 0, SMTO_ABORTIFHUNG, 100, nullptr));
 
     std::string font_name = "";
     uint32_t font_size = 0;
@@ -234,6 +234,20 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         return 1;
     }
 
+    WindowMetrics window_metrics = {};
+    if (!GetWindowMetrics(window_handle, &window_metrics)) {
+        constexpr std::string_view kActionDescription = "get the metrics for a window";
+        constexpr std::string_view kQualifiedName =
+            "console.cc::fsb::Console::EnumWindowsCallback";
+        constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowMetrics";
+        const auto kReturnCode = static_cast<uint32_t>(GetLastError());
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+    }
+
+    if (window_metrics.ex_style_ & WS_EX_TOOLWINDOW) {
+        return 1;
+    }
+
     uint32_t process_id = 0;
     if (GetWindowThreadProcessId(window_handle, reinterpret_cast<DWORD*>(&process_id)) == 0) {
         constexpr std::string_view kActionDescription = "get the process ID for a window.";
@@ -270,22 +284,23 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         }
     }
 
+    if (wcscmp(class_buffer, L"Button") == 0 ||
+        wcscmp(class_buffer, L"Edit") == 0 ||
+        wcscmp(class_buffer, L"Static") == 0 ||
+        wcscmp(class_buffer, L"ComboBox") == 0 ||
+        wcscmp(class_buffer, L"ListBox") == 0 ||
+        wcscmp(class_buffer, L"SysListView32") == 0 ||
+        wcscmp(class_buffer, L"Shell_TrayWnd") == 0 ||
+        wcscmp(class_buffer, L"IME") == 0 || ) {
+        return 1;
+    }
+
     WindowAttributes window_attributes = {};
     if (!GetWindowAttributes(window_handle, &window_attributes)) {
         constexpr std::string_view kActionDescription = "get the attributes for a window";
         constexpr std::string_view kQualifiedName =
             "console.cc::fsb::Console::EnumWindowsCallback";
         constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowAttributes";
-        const auto kReturnCode = static_cast<uint32_t>(GetLastError());
-        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
-    }
-
-    WindowMetrics window_metrics = {};
-    if (!GetWindowMetrics(window_handle, &window_metrics)) {
-        constexpr std::string_view kActionDescription = "get the metrics for a window";
-        constexpr std::string_view kQualifiedName =
-            "console.cc::fsb::Console::EnumWindowsCallback";
-        constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowMetrics";
         const auto kReturnCode = static_cast<uint32_t>(GetLastError());
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
     }
