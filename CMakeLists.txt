@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(fsb
         src/main.cc
         src/console.cc
+        src/config.cc
 )
 
 if (!WIN32)

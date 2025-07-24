@@ -2,10 +2,12 @@
 // Use of this source code is governed by an MIT license that can be
 // found in the LICENSE file.
 
-#ifndef FSB_CONSOLE_HPP_
-#define FSB_CONSOLE_HPP_
+#ifndef FSB_CONSOLE_H_
+#define FSB_CONSOLE_H_
 
 #include "base_types.h"
+#include "config.h"
+
 #include <Windows.h>
 #include <conio.h>
 #include <string_view>
@@ -14,7 +16,7 @@
 namespace fsb {
 class Console {
 public:
-    Console();
+    Console(const Config& config);
     ~Console();
 
     void ShowMenu();
@@ -33,8 +35,9 @@ private:
     int index_section_0_;
     int index_section_1_x_;
     int index_section_1_y_;
+    Config config_;
     std::vector<ProcessData> windows_;
 };
-}
+} // namespace fsb
 
-#endif
+#endif // #ifndef FSB_CONSOLE_H_

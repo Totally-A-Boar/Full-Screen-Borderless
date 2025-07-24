@@ -15,13 +15,20 @@
 #include <string>
 
 namespace fsb {
-Console::Console() {
+Console::Console(const Config& config)
+    : clear_console_(false),
+      refresh_line_(0),
+      menu_section_(true),
+      index_section_0_(0),
+      index_section_1_x_(0),
+      index_section_1_y_(0),
+      config_(config) {
     const auto kConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (kConsoleHandle == INVALID_HANDLE_VALUE) {
         constexpr std::string_view kActionDesc = "setup the console for UTF-8 I/O.";
         constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
         constexpr std::string_view kExportedFunctionName = "Kernel32.dll!GetStdHandle";
-        constexpr int32_t kReturnValue = -1;
+        constexpr int kReturnValue = -1;
         WIN32_ERROR(kActionDesc, kQualifiedName, kExportedFunctionName, kReturnValue);
         std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
@@ -36,7 +43,7 @@ Console::Console() {
         constexpr std::string_view kActionDesc = "setup the console active code page.";
         constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
         constexpr std::string_view kExportedFunctionName = "Kernel32.dll!SetConsoleOutputCP";
-        constexpr int32_t kReturnValue = 0;
+        constexpr int kReturnValue = 0;
         WIN32_ERROR(kActionDesc, kQualifiedName, kExportedFunctionName, kReturnValue);
         std::exit(FSB_CONSOLE_INIT_FAILURE);
     }
@@ -60,7 +67,7 @@ Console::~Console() {
         constexpr std::string_view kActionDescription = "uninitialize the console.";
         constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::Console";
         constexpr std::string_view kExportedFunctionName = "Kernel32.dll!GetStdHandle";
-        constexpr int32_t kReturnValue = -1;
+        constexpr int kReturnValue = -1;
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedFunctionName, kReturnValue);
         std::exit(FSB_CONSOLE_UNINIT_FAILURE);
     }
@@ -68,7 +75,6 @@ Console::~Console() {
     CONSOLE_CURSOR_INFO cursorInfo;
 
     static_cast<void>(GetConsoleCursorInfo(kConsoleHandle, &cursorInfo));
-    cursorInfo.dwSize = 25; // Default cursor size in Windows
     cursorInfo.bVisible = true;
     static_cast<void>(SetConsoleCursorInfo(kConsoleHandle, &cursorInfo));
 }
@@ -126,7 +132,7 @@ bool Console::GetWindowMetrics(HWND window_handle, WindowMetrics* window_metrics
         return false;
     }
 
-    int32_t x, y, width, height;
+    int x, y, width, height;
     x = window_rect.left;
     y = window_rect.top;
     width = window_rect.right - window_rect.left;
@@ -161,7 +167,7 @@ bool Console::GetWindowMetrics(HWND window_handle, WindowMetrics* window_metrics
             }
         }
     } else {
-        // To-do (jhowell728): Implement logging calls.
+        // TODO (jhowell728): Implement logging calls.
         font_name = "None";
         font_size = 0;
     }
@@ -188,7 +194,7 @@ std::string Console::GetProcessFileName(uint32_t process_id) {
     HANDLE process_handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,
         false, process_id);
     if (!process_handle) {
-        // To-do(jhowell728): Come up with a better unknown file name value
+        // TODO(jhowell728): Come up with a better unknown file name value
         return "???";
     }
 
@@ -213,7 +219,7 @@ void Console::ClearConsole() {
         constexpr std::string_view kActionDescription = "clear the console.";
         constexpr std::string_view kQualifiedName = "console.cc::fsb::Console::ClearConsole";
         constexpr std::string_view kExportedFunctionName = "Kernel32.dll!GetStdHandle";
-        constexpr int32_t kReturnCode = -1;
+        constexpr int kReturnCode = -1;
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedFunctionName, kReturnCode);
         return;
     }
@@ -228,9 +234,25 @@ void Console::ClearConsole() {
     std::cout << "\033c[2J\033[H" << std::flush;
 }
 
-// To-do(jhowell728): clean up logic and add better error codes
+// TODO(jhowell728): clean up logic and add better error codes
 int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
     if (window_handle == nullptr || !IsWindow(window_handle)) {
+        return 1;
+    }
+
+    auto console = reinterpret_cast<Console*>(message_param);
+
+    WindowAttributes window_attributes = {};
+    if (!GetWindowAttributes(window_handle, &window_attributes)) {
+        constexpr std::string_view kActionDescription = "get the attributes for a window";
+        constexpr std::string_view kQualifiedName =
+            "console.cc::fsb::Console::EnumWindowsCallback";
+        constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowAttributes";
+        const auto kReturnCode = static_cast<uint32_t>(GetLastError());
+        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
+    }
+
+    if (!window_attributes.is_visible_ && console->config_.hide_hidden_windows_) {
         return 1;
     }
 
@@ -254,7 +276,7 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         constexpr std::string_view kQualifiedName =
             "console.cc::fsb::Console::EnumWindowsCallback";
         constexpr std::string_view kExportedFunctionName = "User32.dll!GetWindowThreadProcessId";
-        constexpr int32_t kReturnCode = 0;
+        constexpr int kReturnCode = 0;
         WIN32_ERROR(kActionDescription, kQualifiedName, kExportedFunctionName, kReturnCode);
         return 1;
     }
@@ -272,6 +294,10 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
         }
     }
 
+    if (title_buffer[0] == L'\0' && console->config_.hide_blank_title_windows_) {
+        return 1;
+    }
+
     wchar_t class_buffer[256];
     if (GetClassNameW(window_handle, class_buffer, std::size(class_buffer)) == 0) {
         if (const auto kReturnCode = static_cast<uint32_t>(GetLastError());
@@ -282,27 +308,6 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
             constexpr std::string_view kExportedOperationName = "User32.dll!GetClassNameW";
             WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
         }
-    }
-
-    if (wcscmp(class_buffer, L"Button") == 0 ||
-        wcscmp(class_buffer, L"Edit") == 0 ||
-        wcscmp(class_buffer, L"Static") == 0 ||
-        wcscmp(class_buffer, L"ComboBox") == 0 ||
-        wcscmp(class_buffer, L"ListBox") == 0 ||
-        wcscmp(class_buffer, L"SysListView32") == 0 ||
-        wcscmp(class_buffer, L"Shell_TrayWnd") == 0 ||
-        wcscmp(class_buffer, L"IME") == 0 || ) {
-        return 1;
-    }
-
-    WindowAttributes window_attributes = {};
-    if (!GetWindowAttributes(window_handle, &window_attributes)) {
-        constexpr std::string_view kActionDescription = "get the attributes for a window";
-        constexpr std::string_view kQualifiedName =
-            "console.cc::fsb::Console::EnumWindowsCallback";
-        constexpr std::string_view kExportedOperationName = "fsb.exe!GetWindowAttributes";
-        const auto kReturnCode = static_cast<uint32_t>(GetLastError());
-        WIN32_ERROR(kActionDescription, kQualifiedName, kExportedOperationName, kReturnCode);
     }
 
     std::string title;
@@ -324,7 +329,6 @@ int Console::EnumWindowsCallback(HWND window_handle, LPARAM message_param) {
     process_data.title_ = title;
     process_data.window_handle_ = window_handle;
 
-    auto console = reinterpret_cast<Console*>(message_param);
     console->windows_.push_back(process_data);
 
     return 1;

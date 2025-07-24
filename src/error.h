@@ -2,11 +2,12 @@
 // Use of this source code is governed by an MIT license that can be
 // found in the LICENSE file.
 
-#ifndef FSB_ERROR_HPP_
-#define FSB_ERROR_HPP_
+#ifndef FSB_ERROR_H_
+#define FSB_ERROR_H_
 
-#include "error.h"
+#include "base_types.h"
 #include "fsb_string.h"
+
 #include <Windows.h>
 #include <sstream>
 #include <string>
@@ -120,7 +121,7 @@ inline void DumpProcessData(const ProcessData& process_data) {
     std::cout << "  ExStyle: 0x" << std::hex << process_data.metrics_.ex_style_ << std::dec << "\n";
     std::cout << "\n";
 }
-}
+} // namespace fsb
 
 #define WIN32_ERROR(action_description, qualified_name, exported_operation_name, return_code) \
     fsb::Win32Error(action_description, __LINE__, qualified_name, exported_operation_name, \
@@ -135,4 +136,4 @@ inline void DumpProcessData(const ProcessData& process_data) {
     fsb::FailfastStl(action_description __LINE__, qualified_name, exported_operation_name, \
                       return_code)
 
-#endif
+#endif // #ifndef FSB_ERROR_H_

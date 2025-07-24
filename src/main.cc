@@ -3,9 +3,11 @@
 // found in the LICENSE file.
 
 #include "console.h"
+#include "config.h"
 
 int __stdcall wmain() {
-    fsb::Console console;
+    fsb::Config config = fsb::ParseConfig();
+    fsb::Console console(config);
 
     console.ShowMenu();
 

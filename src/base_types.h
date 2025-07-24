@@ -79,4 +79,4 @@ struct ProcessData {
 
 }  // namespace fsb
 
-#endif  // FSB_BASETYPES_H_
+#endif  // #ifndef FSB_BASETYPES_H_
